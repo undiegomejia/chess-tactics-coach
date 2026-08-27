@@ -7,12 +7,9 @@ language and schedules spaced-repetition drills.
 ## ⚠️ Current phase: "rough" (Phase 1 — pre-refactor)
 
 This codebase is **deliberately unstructured** right now. Routes talk directly
-to the database and the engine, with no separation of concerns. That's on
-purpose — this is the "feel the pain" version. Once it works end-to-end,
+to the database and the engine, with no separation of concerns. Once it works end-to-end,
 we refactor it into a hexagonal architecture (ports/adapters) and you'll be
 able to point at *specific* lines and explain why the old structure hurt.
-
-Don't over-engineer this first pass. Get it working, ugly is fine.
 
 ## Setup
 
@@ -55,8 +52,6 @@ uvicorn app.main:app --reload
 ```
 
 Visit http://127.0.0.1:8000/docs for the interactive OpenAPI UI.
-Visit http://127.0.0.1:8000/health — this one's already implemented, as a
-working reference for the FastAPI patterns used elsewhere in the TODOs.
 
 ### 6. Run tests
 
