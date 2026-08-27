@@ -8,8 +8,7 @@ language and schedules spaced-repetition drills.
 
 This codebase is **deliberately unstructured** right now. Routes talk directly
 to the database and the engine, with no separation of concerns. Once it works end-to-end,
-we refactor it into a hexagonal architecture (ports/adapters) and you'll be
-able to point at *specific* lines and explain why the old structure hurt.
+we refactor it into a hexagonal architecture (ports/adapters).
 
 ## Setup
 
