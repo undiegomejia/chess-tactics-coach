@@ -1,3 +1,10 @@
+"""
+Utility script to output sample PGN as JSON.
+
+Prints a notable chess game (Gukesh vs Ding Liren, World Championship 2024)
+in JSON format suitable for API testing.
+"""
+
 import json
 pgn = """[Event "WCh 2024"]
 [Site "Singapore SIN"]

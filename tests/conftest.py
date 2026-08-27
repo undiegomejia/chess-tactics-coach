@@ -1,8 +1,8 @@
 """
-pytest configuration file.
+pytest fixtures and configuration.
 
-This file is automatically discovered by pytest and runs before any tests.
-It configures the Python path so tests can import from the 'app' package.
+Provides test client with in-memory database and mock Stockfish engine.
+Automatically discovered by pytest before running tests.
 """
 
 import sys
@@ -20,6 +20,7 @@ from app.api.main import app
 from app.database import Base, get_db
 
 class FakeStockfishEngine:
+    """Mock Stockfish engine for testing without external binary dependency."""
     def __init__(self):
         self._current_fen = None
         self._evaluation_sequence = [
@@ -31,9 +32,11 @@ class FakeStockfishEngine:
         self._call_count = 0
 
     def set_fen_position(self, fen: str, send_ucinewgame_token: bool = True):
+        """Mock method to set FEN position."""
         self._current_fen = fen
 
     def get_evaluation(self) -> dict:
+        """Mock method returning predetermined evaluations."""
         eval_resul = self._evaluation_sequence[self._call_count % len(self._evaluation_sequence)]
         self._call_count += 1
         return eval_resul
@@ -41,11 +44,18 @@ class FakeStockfishEngine:
 
 @pytest.fixture
 def mock_engine():
+    """Provide mock Stockfish engine instance."""
     return FakeStockfishEngine()
 
 
 @pytest.fixture
 def client(mock_engine):
+    """
+    Provide FastAPI test client with in-memory database.
+    
+    Uses SQLite in-memory database with StaticPool for test isolation.
+    Overrides app dependencies to inject test database and mock engine.
+    """
     test_engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -77,6 +87,7 @@ def client(mock_engine):
 
 @pytest.fixture
 def sample_pgn():
+    """Provide sample PGN for testing game creation and retrieval."""
     return {
         "pgn": """[Event "Sample"]
 [White "Magnus Carlsen"]

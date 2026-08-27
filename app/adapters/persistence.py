@@ -1,3 +1,10 @@
+"""
+SQLAlchemy persistence adapter.
+
+Implements GameRepositoryPort using SQLAlchemy ORM.
+Converts between domain entities and database models.
+"""
+
 from app.database import Base
 from sqlalchemy import Integer, String, Text, DateTime
 from app.domain.entities import GameEntity
@@ -5,9 +12,11 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column
 
 def get_datetime():
+    """Return current UTC datetime."""
     return datetime.now(timezone.utc)
 
 class GameORM(Base):
+    """ORM model for games table."""
     __tablename__ = "games"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     pgn: Mapped[str] = mapped_column(Text, nullable=False)
@@ -17,6 +26,7 @@ class GameORM(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_datetime, nullable=False)
 
     def to_entity(self) -> GameEntity:
+        """Convert ORM model to domain entity."""
         return GameEntity(
             id=self.id,
             pgn=self.pgn,
@@ -28,6 +38,7 @@ class GameORM(Base):
     
     @classmethod
     def from_entity(cls, game_entity: GameEntity) -> "GameORM":
+        """Create ORM model from domain entity."""
         return cls(
             id=game_entity.id,
             pgn=game_entity.pgn,
@@ -38,10 +49,12 @@ class GameORM(Base):
         )
     
 class SQLAlchemyGameRepository:
+    """Repository implementation using SQLAlchemy."""
     def __init__(self, session):
         self.session = session
 
     def add_game(self, game_entity: GameEntity) -> GameEntity:
+        """Add a new game to the database."""
         game_orm = GameORM.from_entity(game_entity)
         self.session.add(game_orm)
         self.session.commit()
@@ -49,10 +62,12 @@ class SQLAlchemyGameRepository:
         return game_orm.to_entity()
 
     def get_games(self) -> list[GameEntity]:
+        """Retrieve all games from database."""
         games = self.session.query(GameORM).all()
         return [game.to_entity() for game in games]
     
     def get_game_by_id(self, game_id: int) -> GameEntity | None:
+        """Retrieve a specific game by ID, or None if not found."""
         game = self.session.query(GameORM).filter(GameORM.id == game_id).first()
         if not game:
             return None

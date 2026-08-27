@@ -1,13 +1,8 @@
 """
-FastAPI entrypoint.
+FastAPI application main entry point.
 
-`/health` is fully implemented below as a reference for the pattern:
-route decorator -> function -> return value FastAPI serializes to JSON.
-Use it as your template for the three TODO routes.
-
-Deliberately rough for now: routes will call the database and the
-chess engine directly, with no service/repository layer in between.
-That's the point of this phase -- don't add abstractions preemptively.
+Provides REST API for chess game storage and analysis.
+Routes handle game CRUD operations and Stockfish-powered position analysis.
 """
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -24,6 +19,7 @@ from datetime import datetime
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Manage application lifecycle: initialize DB and Stockfish on startup, cleanup on shutdown."""
     Base.metadata.create_all(engine)
     app.state.stockfish_engine = start_stockfish_engine()
     yield
@@ -31,10 +27,12 @@ async def lifespan(app: FastAPI):
 
 
 class PostGame(BaseModel):
+    """Request model for creating a new game."""
     model_config = ConfigDict(from_attributes=True)
     pgn: str
 
 class GetGame(BaseModel):
+    """Response model for game summary (without full PGN)."""
     model_config = ConfigDict(from_attributes=True)
     id: int
     white: str
@@ -55,6 +53,12 @@ app = FastAPI(lifespan=lifespan,title="Chess Tactics Coach", version="0.1.0")
 
 @app.post("/games", status_code=201)
 def create_game(payload: PostGame, db = Depends(get_db))  -> GameCreated:
+    """
+    Create a new game from PGN.
+    
+    Validates PGN format, extracts headers (White, Black, Result),
+    stores game in database.
+    """
     try:
         parsed_game = chess.pgn.read_game(io.StringIO(payload.pgn))
         if parsed_game is None:
@@ -80,6 +84,7 @@ def create_game(payload: PostGame, db = Depends(get_db))  -> GameCreated:
 
 @app.get("/games/{game_id}", status_code=200)
 def get_game(game_id: int, db = Depends(get_db)) -> GetGame:
+    """Retrieve a specific game by ID (summary only, no full PGN)."""
     game_by_id = db.query(Game).filter(Game.id == game_id).first()
     if not game_by_id:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -89,12 +94,18 @@ def get_game(game_id: int, db = Depends(get_db)) -> GetGame:
 
 @app.get("/games", status_code=200)
 def list_games(db = Depends(get_db)) -> list[GetGame]:
+    """List all games (summary only, excludes full PGN)."""
     games = db.query(Game).all()
     response = [GetGame.model_validate(game) for game in games]
     return response
 
 @app.get("/games/{game_id}/analysis", status_code=200)
 def get_analysis(request: Request, game_id: int, db = Depends(get_db)) -> list[EvaluationModelResponse]:
+    """
+    Analyze a game using Stockfish.
+    
+    Returns evaluation for each position in the game.
+    """
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -104,24 +115,5 @@ def get_analysis(request: Request, game_id: int, db = Depends(get_db)) -> list[E
 
 @app.get("/health")
 def health_check() -> dict:
-    """Reference implementation. A real interviewer will ask 'why does
-    a health check endpoint exist at all?' -- know the answer
-    (load balancers / orchestrators poll this to know if your instance
-    is alive) before you move on."""
+    """Health check endpoint for load balancers and orchestrators."""
     return {"status": "ok"}
-                                
-
-
-# ---------------------------------------------------------------------
-# TODO 3: GET /games/{game_id}/analysis
-#
-# Look up the game, parse its PGN, run it through
-# app.chess_engine.analyze_game(), return the evaluation.
-#
-# Handle the missing-game case explicitly (404, not a 500) -- this is
-# the kind of thing that gets flagged in a code review and gets asked
-# about in interviews ("what happens if the ID doesn't exist?").
-#
-# @app.get("/games/{game_id}/analysis")
-# def get_analysis(...):
-#     ...
