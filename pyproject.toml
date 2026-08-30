@@ -38,3 +38,7 @@ addopts = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[[tool.mypy.overrides]]
+module = "stockfish.*"
+ignore_missing_imports = true
