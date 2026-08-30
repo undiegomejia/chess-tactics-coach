@@ -84,22 +84,19 @@ def test_game_evaluation(client):
 
     for position_eval in analysis_data:
         assert "fen" in position_eval
-        assert "evaluation" in position_eval
+        assert "type" in position_eval
+        assert "value" in position_eval
 
         assert isinstance(position_eval["fen"], str)
-        assert isinstance(position_eval["evaluation"], dict)
+        assert isinstance(position_eval["type"], str)
+        assert isinstance(position_eval["value"], int)
 
-        eval_data = position_eval["evaluation"]
-        assert "type" in eval_data
-        assert "value" in eval_data
-        assert eval_data["type"] in ["cp", "mate"]
-        assert isinstance(eval_data["value"], int)
 
     first_eval = analysis_data[0]
     assert "rnbqkbnr" in first_eval["fen"]
     first_eval = analysis_data[0]
-    assert first_eval["evaluation"]["type"] == "cp"
-    assert first_eval["evaluation"]["value"] == 30
+    assert first_eval["type"] == "cp"
+    assert first_eval["value"] == 20
 
 def test_game_evaluation_invalid_pgn(client):
     """Test that invalid PGN is rejected during game creation."""

@@ -5,25 +5,28 @@ Provides REST API for chess game storage and analysis.
 Routes handle game CRUD operations and Stockfish-powered position analysis.
 """
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from app.adapters.chess_engine_adapter import StockfishEngineAdapter
+from app.adapters.persistence import SQLAlchemyGameRepository
+from fastapi import Depends, FastAPI, HTTPException
 from contextlib import asynccontextmanager
-from app.chess_engine import EvaluationModelResponse, start_stockfish_engine, stop_stockfish_engine, analyze_game
 from app.database import get_db
-from app.models import Game
-import chess.pgn
-import io
+from app.use_cases import game_use_cases
 from pydantic import BaseModel
 from app.database import engine, Base
 from pydantic.config import ConfigDict
 from datetime import datetime
+from app.config import settings
+
+stockfish_adapter = StockfishEngineAdapter(settings.stockfish_path)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle: initialize DB and Stockfish on startup, cleanup on shutdown."""
     Base.metadata.create_all(engine)
-    app.state.stockfish_engine = start_stockfish_engine()
+    stockfish_adapter.start()
+    app.state.chess_engine = stockfish_adapter
     yield
-    app.state.stockfish_engine = stop_stockfish_engine()
+    stockfish_adapter.stop()
 
 
 class PostGame(BaseModel):
@@ -49,69 +52,59 @@ class GameCreated(BaseModel):
     created_at: datetime
     pgn: str
 
+class EvaluationModelResponse(BaseModel):
+    """Response model for position analysis with FEN and evaluation."""
+    model_config = ConfigDict(from_attributes=True)
+    fen: str
+    type: str
+    value: int
+
+
 app = FastAPI(lifespan=lifespan,title="Chess Tactics Coach", version="0.1.0")
 
 @app.post("/games", status_code=201)
-def create_game(payload: PostGame, db = Depends(get_db))  -> GameCreated:
-    """
-    Create a new game from PGN.
-    
-    Validates PGN format, extracts headers (White, Black, Result),
-    stores game in database.
-    """
+def post_game(payload: PostGame, db = Depends(get_db))  -> GameCreated:
+    repo = SQLAlchemyGameRepository(db)
     try:
-        parsed_game = chess.pgn.read_game(io.StringIO(payload.pgn))
-        if parsed_game is None:
-            raise ValueError("Invalid PGN - unable to parse")
-        if list(parsed_game.mainline_moves()) == []:
-            raise ValueError("Invalid PGN - no moves found.")
-        else:  
-            pgn = payload.pgn
-            white = parsed_game.headers["White"]
-            black = parsed_game.headers["Black"]
-            result = parsed_game.headers["Result"]
-            new_game = Game(pgn=pgn, white=white, black=black, result=result)
+        new_game = game_use_cases.create_game(payload.pgn, repo)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
-    db.add(new_game)
-    db.commit()
-    db.refresh(new_game)
-    response = GameCreated.model_validate(new_game)
-    if not response:
-        raise HTTPException(status_code=500, detail="Failed to create game")
-    return response
+    valid_game = GameCreated.model_validate(new_game)
+    return valid_game
 
 @app.get("/games/{game_id}", status_code=200)
 def get_game(game_id: int, db = Depends(get_db)) -> GetGame:
     """Retrieve a specific game by ID (summary only, no full PGN)."""
-    game_by_id = db.query(Game).filter(Game.id == game_id).first()
+    repo = SQLAlchemyGameRepository(db)
+    game_by_id = game_use_cases.fetch_game(game_id, repo)
     if not game_by_id:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    response = GetGame.model_validate(game_by_id)
-    return response
+    valid_game = GetGame.model_validate(game_by_id)
+    return valid_game
 
 @app.get("/games", status_code=200)
-def list_games(db = Depends(get_db)) -> list[GetGame]:
+def get_games(db = Depends(get_db)) -> list[GetGame]:
     """List all games (summary only, excludes full PGN)."""
-    games = db.query(Game).all()
-    response = [GetGame.model_validate(game) for game in games]
-    return response
+    repo = SQLAlchemyGameRepository(db)
+    games = game_use_cases.list_games(repo)
+    valid_game = [GetGame.model_validate(game) for game in games]
+    return valid_game
 
 @app.get("/games/{game_id}/analysis", status_code=200)
-def get_analysis(request: Request, game_id: int, db = Depends(get_db)) -> list[EvaluationModelResponse]:
+def get_analysis(game_id: int, db = Depends(get_db)) -> list[EvaluationModelResponse]:
     """
     Analyze a game using Stockfish.
     
     Returns evaluation for each position in the game.
     """
-    game = db.query(Game).filter(Game.id == game_id).first()
-    if not game:
-        raise HTTPException(status_code=404, detail="Game not found")
-    stockfish_engine = request.app.state.stockfish_engine
-    analysis = analyze_game(game.pgn, stockfish_engine)
-    return analysis
+    repo = SQLAlchemyGameRepository(db)
+    stockfish_engine = app.state.chess_engine
+    try:
+        evaluations = game_use_cases.analyze_game(game_id, repo, stockfish_engine)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return [EvaluationModelResponse(fen=position.fen, type=position.type, value=position.value) for position in evaluations]
 
 @app.get("/health")
 def health_check() -> dict:
