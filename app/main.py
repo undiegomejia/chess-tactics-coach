@@ -11,10 +11,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from contextlib import asynccontextmanager
 from app.database import get_db
 from app.use_cases import game_use_cases
-from pydantic import BaseModel
 from app.database import engine, Base
-from pydantic.config import ConfigDict
-from datetime import datetime
+from app.schemas import EvaluationModelResponse, GameCreated, GetGame, PostGame
 from app.config import settings
 
 stockfish_adapter = StockfishEngineAdapter(settings.stockfish_path)
@@ -27,38 +25,6 @@ async def lifespan(app: FastAPI):
     app.state.chess_engine = stockfish_adapter
     yield
     stockfish_adapter.stop()
-
-
-class PostGame(BaseModel):
-    """Request model for creating a new game."""
-    model_config = ConfigDict(from_attributes=True)
-    pgn: str
-
-class GetGame(BaseModel):
-    """Response model for game summary (without full PGN)."""
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    white: str
-    black: str
-    result: str
-    created_at: datetime
-
-class GameCreated(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    white: str
-    black: str
-    result: str
-    created_at: datetime
-    pgn: str
-
-class EvaluationModelResponse(BaseModel):
-    """Response model for position analysis with FEN and evaluation."""
-    model_config = ConfigDict(from_attributes=True)
-    fen: str
-    type: str
-    value: int
-
 
 app = FastAPI(lifespan=lifespan,title="Chess Tactics Coach", version="0.1.0")
 
