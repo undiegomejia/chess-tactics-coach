@@ -1,0 +1,2 @@
+class FakeCoachingPort:
+    pass
