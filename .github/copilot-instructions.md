@@ -29,7 +29,7 @@ Student: "My route is crashing"
 
 ## Project Context: Chess Tactics Coach
 
-### Current Phase: Hexagonal Architecture Refactor (Phase 1.5)
+### Current Phase: Coach Logic — Mistake Detection + Claude Agent (Phase 3)
 
 **Completed Foundation (Phase 1):**
 - ✅ FastAPI routes directly calling DB and Stockfish
@@ -39,13 +39,24 @@ Student: "My route is crashing"
 - ✅ Mock engine (FakeStockfishEngine) for fast unit tests
 - ✅ PGN parsing with validation
 
-**Current Work (Phase 1.5 - Ports & Adapters):**
-- 🔄 Extracting domain entities (pure Python dataclasses)
-- 🔄 Defining ports (Protocol interfaces for repository and engine)
-- 🔄 Building adapters (SQLAlchemyGameRepository, StockfishEngineAdapter)
-- 🔄 Refactoring routes to use domain layer
+**Completed Refactor (Phase 2 — Hexagonal Architecture):**
+- ✅ Domain entities extracted (`GameEntity`, `EvaluationEntity` — pure Python dataclasses)
+- ✅ Ports defined (`GameRepositoryPort`, `ChessEnginePort` — Protocol interfaces)
+- ✅ Adapters built (`SQLAlchemyGameRepository`, `StockfishEngineAdapter`)
+- ✅ Routes refactored to use domain layer via use cases
+- ✅ Use cases: `create_game`, `list_games`, `fetch_game`, `analyze_game`
+- ✅ Adapter-level and use-case-level test suites in `tests/adapters/` and `tests/use_cases/`
 
-**Architecture Goals:**
+**Current Work (Phase 3 - Coach Logic):**
+- 🔄 New domain entities: `Mistake`, `Explanation`
+- 🔄 `detect_mistakes` use case — pure Python, no AI, fully unit-testable
+- 🔄 `CoachingPort` — Protocol interface; domain never knows the Anthropic SDK
+- 🔄 `ClaudeCoachAdapter` — only file that imports `anthropic`; agentic tool-calling loop
+- 🔄 `explain_mistakes` use case — orchestrates detect → explain
+- 🔄 `GET /games/{id}/coaching` route
+- 🔄 `FakeCoachingPort` for fast, free, deterministic use-case tests
+
+**Architecture (Phase 3 target):**
 ```
 ┌─────────────────────────────────────────┐
 │  API Layer (FastAPI routes)             │
@@ -53,23 +64,24 @@ Student: "My route is crashing"
 └───────────────┬─────────────────────────┘
                 │
 ┌───────────────▼─────────────────────────┐
-│  Domain Layer (pure Python)             │
-│  - GameEntity, EvaluationEntity         │
-│  - Business logic (when needed)         │
+│  Use Cases                              │
+│  create_game · analyze_game             │
+│  detect_mistakes · explain_mistakes     │
 └───────────────┬─────────────────────────┘
                 │
-        ┌───────┴───────┐
-        │               │
-┌───────▼──────┐ ┌──────▼─────────────────┐
-│ Ports        │ │ Ports                  │
-│ (Protocols)  │ │ (Protocols)            │
-└───────┬──────┘ └──────┬─────────────────┘
-        │               │
-┌───────▼──────┐ ┌──────▼─────────────────┐
-│ Persistence  │ │ Chess Engine           │
-│ Adapter      │ │ Adapter                │
-│ (SQLAlchemy) │ │ (Stockfish)            │
-└──────────────┘ └────────────────────────┘
+        ┌───────┴──────────────┐
+        │                      │
+┌───────▼──────┐        ┌──────▼─────────────────┐
+│ GameRepo     │        │ ChessEnginePort         │
+│ Port         │        │ CoachingPort            │
+└───────┬──────┘        └──────┬─────────────────┘
+        │                      │
+┌───────▼──────┐        ┌──────▼─────────────────┐
+│ Persistence  │        │ StockfishEngineAdapter  │
+│ Adapter      │        │ ClaudeCoachAdapter      │
+│ (SQLAlchemy) │        │ (anthropic SDK here     │
+└──────────────┘        │  and ONLY here)         │
+                        └─────────────────────────┘
 ```
 
 ---
@@ -418,22 +430,29 @@ def stop_engine():
 
 ### Known Patterns to Preserve:
 1. **PGN Storage:** Raw string in database (re-parse on read)
-   - Rationale: Simplicity over optimization in Phase 1
+   - Rationale: Simplicity over optimization; change only when profiling proves it matters
    
 2. **Stockfish Integration:** `stockfish` pip package, not `chess.engine`
-   - Rationale: Higher-level API suitable for learning lifecycle patterns
+   - Rationale: Higher-level API; lifecycle patterns are clearer for learning
    
-3. **Testing Strategy:** Mock engine for unit tests, defer real integration tests
-   - Rationale: Fast feedback loop during development
+3. **Testing Strategy:** Fake adapters for unit tests, defer real integration tests
+   - Rationale: Fast feedback loop; real Anthropic API calls cost money and are non-deterministic
    
-4. **Database:** SQLite for dev, PostgreSQL ready for Phase 2
-   - Already using SQLAlchemy - swap via DATABASE_URL
+4. **Database:** SQLite for dev, PostgreSQL-ready via `DATABASE_URL`
+
+### Current Phase 3 Design Decisions (challenge these if they change):
+- `detect_mistakes` threshold is configurable, not hardcoded (pass as argument)
+- `ClaudeCoachAdapter` receives `ChessEnginePort` as constructor dep (same composition pattern)
+- `CoachingPort.explain()` receives `list[Mistake]`, not raw evaluations
+- `ANTHROPIC_API_KEY` lives in `app/config.py` via `Settings` — never hardcoded
+- Tool calls in the Claude agentic loop are mapped to real `ChessEnginePort` methods
 
 ### Future Refactors (Don't Implement Yet):
 - Service layer between routes and repositories
-- Custom exception hierarchy (GameNotFoundError, InvalidPgnError)
+- Custom exception hierarchy (`GameNotFoundError`, `InvalidPgnError`, `MistakeDetectionError`)
 - Real Stockfish integration tests (`@pytest.mark.integration`)
-- Agentic AI layer (Claude API, tool-calling)
+- Real Anthropic integration tests (`@pytest.mark.anthropic`) — separate, opt-in, costly
+- Spaced-repetition drill scheduler
 - React frontend
 
 ---
@@ -501,6 +520,25 @@ def stop_engine():
 - Dependency injection for repository and engine
 - Pydantic models for request/response validation
 - Proper error handling (HTTPException)
+
+### `app/domain/entities.py` (Phase 3 additions)
+- `Mistake` dataclass: `move_number`, `player`, `fen_before`, `fen_after`, `eval_before`, `eval_after`, `move_played`
+- `Explanation` dataclass: `mistake` (a `Mistake`), `text`, `best_move`
+- Zero framework imports — pure Python dataclasses only
+
+### `app/domain/ports.py` (Phase 3 additions)
+- `CoachingPort(Protocol)` with one method: `explain(game, mistakes) -> list[Explanation]`
+- Domain **never** imports `anthropic` — that boundary is enforced here
+
+### `app/use_cases/coaching_use_cases.py` (new in Phase 3)
+- `detect_mistakes(evaluations, threshold)` — pure Python, no AI, no API key needed
+- `explain_mistakes(game_id, repo, engine, coach)` — orchestrates detect → explain
+
+### `app/adapters/claude_coach_adapter.py` (new in Phase 3)
+- **Only file** that imports `anthropic` SDK
+- Takes `ChessEnginePort` as constructor dependency for tool access
+- Implements full agentic loop: send → handle tool calls → receive → map to `Explanation`
+- API key read from `settings.anthropic_api_key` (never hardcoded)
 
 ### `tests/conftest.py`
 - Fixtures for: client, mock_engine, test_db
