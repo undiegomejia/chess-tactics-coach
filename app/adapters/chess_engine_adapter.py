@@ -55,7 +55,16 @@ class StockfishEngineAdapter:
                 EvaluationEntity(
                     fen=board.fen(),
                     type=evaluation["type"],
-                    value=evaluation["value"]
+                    value=evaluation["value"],
+                    move_played=move.uci(),  # Store the move played in UCI format
                 )
             )
         return evaluations
+    
+    def get_best_move(self, fen: str) -> str:
+        if self._engine is None:
+            raise RuntimeError("Stockfish engine is not started")
+        with self._lock:
+            self._engine.set_fen_position(fen)
+            best_move = self._engine.get_best_move()
+        return best_move

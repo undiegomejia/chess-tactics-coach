@@ -5,24 +5,30 @@ Provides REST API for chess game storage and analysis.
 Routes handle game CRUD operations and Stockfish-powered position analysis.
 """
 
+import anthropic
 from app.adapters.chess_engine_adapter import StockfishEngineAdapter
+from app.adapters.claude_coach_adapter import ClaudeCoachAdapter
 from app.adapters.persistence import SQLAlchemyGameRepository
+from app.domain.entities import Explanation
 from fastapi import Depends, FastAPI, HTTPException
 from contextlib import asynccontextmanager
 from app.database import get_db
-from app.use_cases import game_use_cases
+from app.use_cases import coaching_use_case, game_use_cases
 from app.database import engine, Base
 from app.schemas import EvaluationModelResponse, GameCreated, GetGame, PostGame
 from app.config import settings
 
 stockfish_adapter = StockfishEngineAdapter(settings.stockfish_path)
+claude_adapter = ClaudeCoachAdapter(settings.anthropic_api_key.get_secret_value(), stockfish_adapter)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle: initialize DB and Stockfish on startup, cleanup on shutdown."""
     Base.metadata.create_all(engine)
+    # start stockfish engine
     stockfish_adapter.start()
     app.state.chess_engine = stockfish_adapter
+    app.state.coach_adapter = claude_adapter
     yield
     stockfish_adapter.stop()
 
@@ -71,6 +77,26 @@ def get_analysis(game_id: int, db = Depends(get_db)) -> list[EvaluationModelResp
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [EvaluationModelResponse(fen=position.fen, type=position.type, value=position.value) for position in evaluations]
+
+@app.get("/games/{game_id}/coaching", status_code=200)
+def get_coaching(game_id: int, db = Depends(get_db)) -> list[Explanation]:
+    repo = SQLAlchemyGameRepository(db)
+    stockfish_engine = app.state.chess_engine
+    coach = app.state.coach_adapter
+    try:
+        game_by_id = game_use_cases.fetch_game(game_id, repo)
+        print(f"Fetched game for coaching: {game_by_id}")
+        game_analysis = game_use_cases.analyze_game(game_id, repo, stockfish_engine)
+        print(f"Game analysis for coaching: {game_analysis}")
+        mistakes = coaching_use_case.detect_mistakes(game_analysis)
+        print(f"Detected mistakes for coaching: {mistakes}")
+        explanations = coaching_use_case.explain_mistakes(game_by_id, mistakes, coach)
+        print(f"Generated explanations for coaching: {explanations}")
+        return explanations
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except anthropic.APIStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Coaching service error: {e.message}")
 
 @app.get("/health")
 def health_check() -> dict:
