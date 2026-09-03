@@ -160,7 +160,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Required:
 #   STOCKFISH_PATH — absolute path to the stockfish binary
-#   ANTHROPIC_API_KEY — your Anthropic key (Phase 3, optional for now)
+#   CLAUDE_API_KEY — your Anthropic's Claude key (Phase 3, optional for now)
 ```
 
 ### 4. Verify Stockfish is reachable
