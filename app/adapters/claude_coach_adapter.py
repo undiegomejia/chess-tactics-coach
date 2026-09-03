@@ -18,13 +18,13 @@ class ClaudeCoachAdapter:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "fen": {"type": "string", "value": "FEN string representing the chess position"}
+                    "fen": {"type": "string", "description": "FEN string representing the chess position"}
                 },
                 "required": ["fen"]
             },
         }]
         for mistake in mistakes:
-            prompt = _generate_prompt(self, game, mistake)
+            prompt = generate_prompt(self, game, mistake)
             history = [{"role": "user", "content": prompt}]
             response = self._client.messages.create(
                 model="claude-3-5-haiku-20241022",
@@ -55,13 +55,12 @@ class ClaudeCoachAdapter:
             print(f"Explanations: {explanations}")
         return explanations
 
-def _generate_prompt(self, game: GameEntity, mistake: Mistake) -> str:
+def generate_prompt(game, mistake) -> str:
      # ← fill in: move_number, player, fen_before, fen_after, eval_before, eval_after, move_played
      prompt = f"""
         Explain the mistake made in this chess game.
         Move number: {mistake.move_number}
-        White Player: {game.white}
-        Black Player: {game.black}
+        Player: "This mistake was made by {mistake.player} ({game.white if mistake.player == 'white' else game.black})" 
         FEN before: {mistake.fen_before}
         FEN after: {mistake.fen_after}
         Evaluation before: {mistake.eval_before} ({mistake.eval_before_type})

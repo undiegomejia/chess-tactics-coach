@@ -59,6 +59,20 @@ class FakeStockfishAdapter:
             ),
         ]
 
+class FakeClaudeCoachAdapter:
+    def explain(self, _, mistakes):
+        """Return a fixed explanation for testing."""
+        explanations = []
+        for mistake in mistakes:
+            explanations.append(
+                {
+                    "mistake": mistake,
+                    "text": f"Mock explanation for move {mistake.move_number} by {mistake.player}.",
+                    "best_move": "e2e4"  # Mock best move
+                }
+            )
+        return explanations
+
 
 @pytest.fixture
 def mock_engine_adapter():
