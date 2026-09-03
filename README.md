@@ -12,7 +12,8 @@ Claude acting as an agentic coach with access to real chess-engine tools.
 |-------|------|--------|
 | Phase 1 | MVP — Routes, DB, Stockfish | ✅ Complete |
 | Phase 2 | Hexagonal Architecture (Ports & Adapters) | ✅ Complete |
-| Phase 3 | Coach Logic — Mistake Detection + Claude Agent | 🔄 In Progress |
+| Phase 3 | Coach Logic — Mistake Detection + Claude Agent | ✅ Complete |
+| Phase 4 | Frontend UI (React) | 🔄 In Progress |
 
 ---
 
@@ -78,7 +79,7 @@ is pure Python — no SQLAlchemy, no Stockfish, no Pydantic.
 
 ---
 
-## 🔄 Phase 3 — Coach Logic (In Progress)
+## ✅ Phase 3 — Coach Logic (Complete)
 
 Adds a fully agentic coaching layer: deterministic mistake detection
 (pure Python, no AI) layered with a Claude-powered adapter that explains
