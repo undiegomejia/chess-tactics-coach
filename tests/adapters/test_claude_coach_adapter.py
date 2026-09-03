@@ -37,13 +37,13 @@ def test_generate_prompt(test_game_entity, generate_mistakes):
     """Test the _generate_prompt function."""
     for mistake in generate_mistakes:
         prompt = generate_prompt(test_game_entity, mistake)
-        assert "Move number" in prompt
-        assert "Player" in prompt
-        assert "FEN before" in prompt
-        assert "FEN after" in prompt
-        assert "Evaluation before" in prompt
-        assert "Evaluation after" in prompt
-        assert "Move played" in prompt
+        assert "Explain the mistake" in prompt
+        assert "Context" in prompt
+        assert "Game metadata" in prompt
+        assert "Mistake record" in prompt
+        assert "Instructions for the model" in prompt
+        assert "fen_before" in prompt
+        assert "fen_after" in prompt
 
 def test_claude_coach_adapter(test_game_entity, generate_mistakes):
     adapter = FakeClaudeCoachAdapter()

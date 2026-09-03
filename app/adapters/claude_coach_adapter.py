@@ -74,6 +74,36 @@ class ClaudeCoachAdapter:
 
 
 def generate_prompt(game, mistake) -> str:
+    json_prompt = {
+        "move_number": "23",
+        "player": "black",
+        "move_played": "Qh4",
+        "fen_before": "r1bq1rk1/ppp2ppp/2n2n2/3p4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 w - - 0 10",
+        "fen_after": "r1bq1rk1/ppp2ppp/2n2n2/3p4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 b - - 0 10",
+        "eval_before": "20",
+        "eval_after": "-150",
+        "eval_delta": "-170",
+        "eval_units": "centipawns",
+        "eval_type_before": "engine",
+        "eval_type_after": "engine",
+        "mistake_category": "blunder",
+        "concise_explanation": "The move Qh4 allows a tactical sequence that wins material by exploiting an undefended back rank and a pinned piece.",
+        "concrete_variation": "1. Qh4 2. Nxh4 g5 3. Nf3 ... eval +2.10",
+        "best_alternatives": [
+            {
+                "move_san": "Re1",
+                "move_uci": "e1e8",
+                "short_line": "Re1 Re8 2. ...",
+                "eval_after_line": "50",
+                "rationale": "Improves rook activity and avoids the tactical motif.",
+            }
+        ],
+        "tactical_motifs": ["pin", "back-rank"],
+        "strategic_factors": ["king safety", "piece coordination"],
+        "recommended_plan": "Prioritize king safety and avoid weakening pawn moves that create tactical targets. When in doubt, improve piece coordination before launching attacks.",
+        "confidence": "0.92",
+    }
+
     # ← fill in: move_number, player, fen_before, fen_after, eval_before, eval_after, move_played
     prompt = f"""
         Explain the mistake in this chess game and return a single JSON object only.
@@ -143,35 +173,8 @@ def generate_prompt(game, mistake) -> str:
         - Do not include markdown, code fences, or extra commentary outside the JSON object.
 
         Example JSON structure expected
-        {
-        "move_number": 23,
-        "player": "black",
-        "move_played": "Qh4",
-        "fen_before": "r1bq1rk1/ppp2ppp/2n2n2/3p4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 w - - 0 10",
-        "fen_after": "r1bq1rk1/ppp2ppp/2n2n2/3p4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 b - - 0 10",
-        "eval_before": 20,
-        "eval_after": -150,
-        "eval_delta": -170,
-        "eval_units": "centipawns",
-        "eval_type_before": "engine",
-        "eval_type_after": "engine",
-        "mistake_category": "blunder",
-        "concise_explanation": "The move Qh4 allows a tactical sequence that wins material by exploiting an undefended back rank and a pinned piece.",
-        "concrete_variation": "1. Qh4 2. Nxh4 g5 3. Nf3 ... eval +2.10",
-        "best_alternatives": [
-            {
-            "move_san": "Re1",
-            "move_uci": "e1e8",
-            "short_line": "Re1 Re8 2. ...",
-            "eval_after_line": 50,
-            "rationale": "Improves rook activity and avoids the tactical motif."
-            }
-        ],
-        "tactical_motifs": ["pin", "back-rank"],
-        "strategic_factors": ["king safety", "piece coordination"],
-        "recommended_plan": "Prioritize king safety and avoid weakening pawn moves that create tactical targets. When in doubt, improve piece coordination before launching attacks.",
-        "confidence": 0.92
-        }
+        
+        {json_prompt}
 
         End of prompt.
         """
