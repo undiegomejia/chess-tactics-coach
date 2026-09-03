@@ -105,7 +105,7 @@ class Explanation:
     best_move: str       # engine's top choice
 ```
 
-### New ports (planned)
+### New ports (Complete)
 
 ```python
 class CoachingPort(Protocol):
@@ -114,20 +114,20 @@ class CoachingPort(Protocol):
     ) -> list[Explanation]: ...
 ```
 
-### New use cases (planned)
+### New use cases (Complete)
 
 | Use Case | What it does |
 |----------|-------------|
 | `detect_mistakes` | Pure Python — walks evaluations, flags eval swings above threshold |
 | `explain_mistakes` | Orchestrates: detect → hand to `CoachingPort` → return explanations |
 
-### New adapter (planned)
+### New adapter (Complete)
 
 `ClaudeCoachAdapter` — the **only** file that imports the Anthropic SDK.
 Takes a `ChessEnginePort` as a constructor dependency so Claude can call
 `get_best_move` as a real tool during the agentic loop.
 
-### New endpoint (planned)
+### New endpoint (Complete)
 
 `GET /games/{id}/coaching` — thin route, same pattern as `/analysis`.
 
