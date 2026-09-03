@@ -96,7 +96,7 @@ class Mistake:
     fen_after: str
     eval_before: int     # centipawns
     eval_after: int
-    move_played: str     # SAN notation
+    move_played: str     # UCI notation
 
 @dataclass
 class Explanation:
