@@ -74,7 +74,7 @@ class ClaudeCoachAdapter:
 
 
 def generate_prompt(game, mistake) -> str:
-    json_prompt = {
+    expected_json_example = {
         "move_number": "23",
         "player": "black",
         "move_played": "Qh4",
@@ -174,7 +174,7 @@ def generate_prompt(game, mistake) -> str:
 
         Example JSON structure expected
         
-        {json_prompt}
+        {expected_json_example}
 
         End of prompt.
         """
