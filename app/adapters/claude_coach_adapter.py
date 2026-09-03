@@ -1,47 +1,71 @@
-import os
 from anthropic import Anthropic
-from app.domain.entities import Explanation
+from app.domain.entities import Explanation, GameEntity, Mistake
 from app.domain.ports import ChessEnginePort
 
+
 class ClaudeCoachAdapter:
-    def __init__(self, path: str, engine: ChessEnginePort):
-        self._client: Anthropic | None = Anthropic(api_key=path)
-        self.path = path
+    def __init__(self, api_key: str, engine: ChessEnginePort):
+        self._client: Anthropic | None = Anthropic(api_key=api_key)
+        self.api_key = api_key
         self._engine = engine
 
-    def _generate_prompt(self, game, mistake) -> str:
-        # Generate a prompt for Claude based on the game and the mistake
-        prompt = f"""
-        Analyze the following chess game and explain the mistake made at move {mistake.move_number} by {mistake.player}.
-        Game PGN: {game.pgn}
-        Mistake FEN before: {mistake.fen_before}
-        Mistake FEN after: {mistake.fen_after}
-        Evaluation before: {mistake.eval_before}
-        Evaluation after: {mistake.eval_after}
-        Move played: {mistake.move_played}
-
-        Please provide a detailed explanation of why this move was a mistake, what the best move would have been, and any strategic insights.
-        """
-        return prompt
 
     def explain(self, game, mistakes) -> list[Explanation]:
         explanations = []
+        tools = [{
+            "name": "get_best_move",
+            "description": "Get the best move for a given chess position in FEN format.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "fen": {"type": "string", "value": "FEN string representing the chess position"}
+                },
+                "required": ["fen"]
+            },
+        }]
         for mistake in mistakes:
-            prompt = self._generate_prompt(game, mistake)
+            prompt = _generate_prompt(self, game, mistake)
+            history = [{"role": "user", "content": prompt}]
             response = self._client.messages.create(
                 model="claude-3-5-haiku-20241022",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                messages=history,
                 max_tokens=1024,
+                tools=tools,
             )
-            text = response.content[0].text if response.content else ""
-            print(f"Claude response for move {mistake.move_number}: {text}")
-            best_move = self._engine.get_best_move(mistake.fen_before) if self._engine else "unknown"
-            print(f"Best move according to engine for move {mistake.move_number}: {best_move}")
-            explanations.append(Explanation(
-                mistake=mistake,
-                text=text,
-                best_move=best_move
-            ))
+            if response.stop_reason == "tool_use":
+                tool_use = next(block for block in response.content if block.type == "tool_use")
+                fen = tool_use.input["fen"]
+                best_move = self._engine.get_best_move(fen)
+
+                history = history + [
+                    {"role": "assistant", "content": response.content},
+                    {"role": "user", "content": [{"type": "tool_result", "tool_use_id": tool_use.id, "content": best_move}]}
+                ]
+                followup = self._client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1024,
+                tools=tools,
+                    messages=history
+                )
+                text = next(b.text for b in followup.content if b.type == "text")
+            else:
+                text = next(b.text for b in response.content if b.type == "text")
+                best_move = None
+            explanations.append(Explanation(mistake=mistake, text=text, best_move=best_move))
+            print(f"Explanations: {explanations}")
         return explanations
+
+def _generate_prompt(self, game: GameEntity, mistake: Mistake) -> str:
+     # ← fill in: move_number, player, fen_before, fen_after, eval_before, eval_after, move_played
+     prompt = f"""
+        Explain the mistake made in this chess game.
+        Move number: {mistake.move_number}
+        White Player: {game.white}
+        Black Player: {game.black}
+        FEN before: {mistake.fen_before}
+        FEN after: {mistake.fen_after}
+        Evaluation before: {mistake.eval_before} ({mistake.eval_before_type})
+        Evaluation after: {mistake.eval_after} ({mistake.eval_after_type})
+        Move played: {mistake.move_played}
+        """
+     return prompt

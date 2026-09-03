@@ -33,7 +33,9 @@ class Mistake:
     fen_before: str
     fen_after: str
     eval_before: int     # centipawns
+    eval_before_type: str  # "cp" | "mate"
     eval_after: int
+    eval_after_type: str   # "cp" | "mate"
     move_played: str
 
 @dataclass
