@@ -28,7 +28,7 @@ class ClaudeCoachAdapter:
             }
         ]
         for mistake in mistakes:
-            prompt = generate_prompt(self, game, mistake)
+            prompt = generate_prompt(game, mistake)
             history = [{"role": "user", "content": prompt}]
             response = self._client.messages.create(
                 model="claude-3-5-haiku-20241022",

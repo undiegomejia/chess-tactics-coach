@@ -7,13 +7,9 @@ def detect_mistakes(evaluations: list[EvaluationEntity], threshold=100) -> list[
     for i in range(1, len(evaluations)):
         eval_before = evaluations[i - 1]
         eval_after = evaluations[i]
-        print(f"Evaluating move {i}: eval_before={eval_before.value} ({eval_before.type}), eval_after={eval_after.value} ({eval_after.type})")
-        print(f"_to_centipawns(eval_before): {_to_centipawns(eval_before)},  _to_centipawns(eval_after): {_to_centipawns(eval_after)}")
         # normalize evaluation values to centipawns for comparison
         # Assuming a mistake is defined as a drop in evaluation of more than `threshold` centipawns
         absolute_difference = abs(_to_centipawns(eval_after) - _to_centipawns(eval_before))
-        print(f"abs result: {absolute_difference}")
-        print(f"is mistake ??: {absolute_difference > threshold}")
         if (i % 2 == 1 and absolute_difference > threshold) or (i % 2 != 1 and absolute_difference < threshold):
             mistakes.append(
                 Mistake(

@@ -27,7 +27,9 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
     # start stockfish engine
     stockfish_adapter.start()
+    # store the adapters in the app state for access in route handlers
     app.state.chess_engine = stockfish_adapter
+    # store the Claude coach adapter in the app state for access in route handlers
     app.state.coach_adapter = claude_adapter
     yield
     stockfish_adapter.stop()
@@ -80,18 +82,21 @@ def get_analysis(game_id: int, db = Depends(get_db)) -> list[EvaluationModelResp
 
 @app.get("/games/{game_id}/coaching", status_code=200)
 def get_coaching(game_id: int, db = Depends(get_db)) -> list[Explanation]:
+    # Fetch the game, analyze it, detect mistakes, and get explanations for those mistakes
     repo = SQLAlchemyGameRepository(db)
+    # Get the Stockfish engine and Claude coach adapter from the app state
     stockfish_engine = app.state.chess_engine
-    coach = app.state.coach_adapter
+    # Get the Claude coach adapter from the app state
+    coach_adapter = app.state.coach_adapter
     try:
+        # Fetch the game and analyze it
         game_by_id = game_use_cases.fetch_game(game_id, repo)
-        print(f"Fetched game for coaching: {game_by_id}")
+        # Analyze the game to get evaluations
         game_analysis = game_use_cases.analyze_game(game_id, repo, stockfish_engine)
-        print(f"Game analysis for coaching: {game_analysis}")
+        # Detect mistakes based on the evaluations
         mistakes = coaching_use_case.detect_mistakes(game_analysis)
-        print(f"Detected mistakes for coaching: {mistakes}")
-        explanations = coaching_use_case.explain_mistakes(game_by_id, mistakes, coach)
-        print(f"Generated explanations for coaching: {explanations}")
+        # Get explanations for the detected mistakes
+        explanations = coaching_use_case.explain_mistakes(game_by_id, mistakes, coach_adapter)
         return explanations
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
