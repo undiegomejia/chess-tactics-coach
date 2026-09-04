@@ -1,4 +1,4 @@
-from tests.adapters.test_claude_coach_adapter import generate_mistakes
+from tests.conftest import generate_mistakes
 from app.use_cases.coaching_use_case import detect_mistakes
 from app.domain.entities import EvaluationEntity, Explanation
 
