@@ -1,11 +1,11 @@
 from anthropic import Anthropic
-from app.domain.entities import Explanation, GameEntity, Mistake
+from app.domain.entities import Explanation
 from app.domain.ports import ChessEnginePort
 
 
 class ClaudeCoachAdapter:
-    def __init__(self, api_key: str, engine: ChessEnginePort):
-        self._client: Anthropic | None = Anthropic(api_key=api_key)
+    def __init__(self, api_key: str, engine: ChessEnginePort, client: Anthropic | None = None):
+        self._client: Anthropic | None = client or Anthropic(api_key=api_key)
         self.api_key = api_key
         self._engine = engine
 

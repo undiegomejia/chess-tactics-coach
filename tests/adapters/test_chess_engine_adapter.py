@@ -1,25 +1,15 @@
 from app.adapters.chess_engine_adapter import StockfishEngineAdapter
 from app.config import settings
-from app.domain.entities import GameEntity
-import pytest
+from tests.conftest import game_entity
 
+game_entity_mock = game_entity
 stockfish_path = settings.stockfish_path
 
-@pytest.fixture
-def game_entity():
-    return GameEntity(
-        id=1,
-        white="?",
-        black="Bruce, Rowena M",
-        result="1/2-1/2",
-        pgn='[Event "?"]\n[Site "?"]\n[Date "2023.10.01"]\n[Round "?"]\n[White "?"]\n[Black "Bruce, Rowena M"]\n[Result "1/2-1/2"]\n\n1. e4 e5 1/2-1/2',
-    )
-
-def test_stockfish_adapter(game_entity):
+def test_stockfish_adapter(game_entity_mock):
     """Test the StockfishEngineAdapter's analyze method."""
     adapter = StockfishEngineAdapter(path=stockfish_path)
     adapter.start()
-    evaluations = adapter.analyze(game_entity)
+    evaluations = adapter.analyze(game_entity_mock)
     
     assert isinstance(evaluations, list)
     assert len(evaluations) == 2
@@ -30,21 +20,21 @@ def test_stockfish_adapter(game_entity):
         assert isinstance(position.value, int)
     adapter.stop()
 
-def test_stockfish_adapter_values(game_entity):
+def test_stockfish_adapter_values(game_entity_mock):
     adapter = StockfishEngineAdapter(path=stockfish_path)
     adapter.start()
-    evaluations = adapter.analyze(game_entity)
+    evaluations = adapter.analyze(game_entity_mock)
     for position in evaluations:
         assert position.type in ("cp", "mate")
         if position.type == "cp":
             assert -200 < position.value < 200  # sane range for a quiet opening position
     adapter.stop()
 
-def test_stockfish_adapter_fen(game_entity):
+def test_stockfish_adapter_fen(game_entity_mock):
     """Test that the StockfishEngineAdapter returns expected FEN strings."""
     adapter = StockfishEngineAdapter(path=stockfish_path)
     adapter.start()
-    evaluations = adapter.analyze(game_entity)
+    evaluations = adapter.analyze(game_entity_mock)
 
     expected_fens = [
         "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
