@@ -7,7 +7,7 @@ Automatically discovered by pytest before running tests.
 
 import sys
 from pathlib import Path
-from app.domain.entities import EvaluationEntity
+from app.domain.entities import EvaluationEntity, Explanation, Mistake
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -60,18 +60,37 @@ class FakeStockfishAdapter:
         ]
 
 class FakeClaudeCoachAdapter:
-    def explain(self, _, mistakes):
+    def explain(self, _, mistake) -> list[Explanation]:
+        
         """Return a fixed explanation for testing."""
-        explanations = []
-        for mistake in mistakes:
-            explanations.append(
-                {
-                    "mistake": mistake,
-                    "text": f"Mock explanation for move {mistake.move_number} by {mistake.player}.",
-                    "best_move": "e2e4"  # Mock best move
-                }
-            )
-        return explanations
+        return [
+            Explanation(
+                mistake=Mistake(move_number=1, 
+                                player="white",
+                                fen_before="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+                                fen_after="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+                                eval_before=0, 
+                                eval_before_type="cp",
+                                eval_after=20, 
+                                eval_after_type="cp", 
+                                move_played="e2e4"), 
+                text="Mock explanation for move 1.",
+                best_move="e2e4"
+            ),
+            Explanation(
+                mistake=Mistake(move_number=2, 
+                                player="black",
+                                fen_before="rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                                fen_after="rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                                eval_before=20, 
+                                eval_before_type="cp",
+                                eval_after=15, 
+                                eval_after_type="cp", 
+                                move_played="e7e5"), 
+                text="Mock explanation for move 2.",
+                best_move="e7e5"
+            ),
+        ]
 
 
 @pytest.fixture

@@ -10,7 +10,7 @@ def detect_mistakes(evaluations: list[EvaluationEntity], threshold=100) -> list[
         # normalize evaluation values to centipawns for comparison
         # Assuming a mistake is defined as a drop in evaluation of more than `threshold` centipawns
         absolute_difference = abs(_to_centipawns(eval_after) - _to_centipawns(eval_before))
-        if (i % 2 == 1 and absolute_difference > threshold) or (i % 2 != 1 and absolute_difference < threshold):
+        if absolute_difference > threshold:
             mistakes.append(
                 Mistake(
                     move_number=(i // 2) + 1,

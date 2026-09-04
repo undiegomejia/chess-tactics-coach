@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from app.database import get_db
 from app.use_cases import coaching_use_case, game_use_cases
 from app.database import engine, Base
-from app.schemas import EvaluationModelResponse, GameCreated, GetGame, PostGame
+from app.schemas import EvaluationModelResponse, ExplanationModelResponse, GameCreated, GetGame, PostGame
 from app.config import settings
 
 stockfish_adapter = StockfishEngineAdapter(settings.stockfish_path)
@@ -81,7 +81,7 @@ def get_analysis(game_id: int, db = Depends(get_db)) -> list[EvaluationModelResp
     return [EvaluationModelResponse(fen=position.fen, type=position.type, value=position.value) for position in evaluations]
 
 @app.get("/games/{game_id}/coaching", status_code=200)
-def get_coaching(game_id: int, db = Depends(get_db)) -> list[Explanation]:
+def get_coaching(game_id: int, db = Depends(get_db)) -> list[ExplanationModelResponse]:
     # Fetch the game, analyze it, detect mistakes, and get explanations for those mistakes
     repo = SQLAlchemyGameRepository(db)
     # Get the Stockfish engine and Claude coach adapter from the app state
@@ -97,7 +97,7 @@ def get_coaching(game_id: int, db = Depends(get_db)) -> list[Explanation]:
         mistakes = coaching_use_case.detect_mistakes(game_analysis)
         # Get explanations for the detected mistakes
         explanations = coaching_use_case.explain_mistakes(game_by_id, mistakes, coach_adapter)
-        return explanations
+        return [ExplanationModelResponse(mistake=explanation.mistake, text=explanation.text, best_move=explanation.best_move) for explanation in explanations]
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except anthropic.APIStatusError as e:

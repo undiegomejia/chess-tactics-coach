@@ -33,3 +33,24 @@ class EvaluationModelResponse(BaseModel):
     type: str
     value: int
 
+class MistakeModelResponse(BaseModel):
+    """Response model for detected mistakes."""
+    model_config = ConfigDict(from_attributes=True)
+    move_number: int
+    player: str
+    fen_before: str
+    fen_after: str
+    eval_before: int
+    eval_before_type: str
+    eval_after: int
+    eval_after_type: str
+    move_played: str
+
+class ExplanationModelResponse(BaseModel):
+    """Response model for coaching explanations."""
+    model_config = ConfigDict(from_attributes=True)
+    mistake: MistakeModelResponse
+    text: str
+    best_move: str | None
+
+

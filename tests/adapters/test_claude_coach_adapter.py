@@ -52,6 +52,7 @@ def test_claude_coach_adapter(test_game_entity, generate_mistakes):
     assert isinstance(explanations, list)
     assert len(explanations) == len(generate_mistakes)
     for explanation in explanations:
-        assert explanation['mistake'] is not None or ""
-        assert explanation['text'] is not None or ""
-        assert explanation['best_move'] is not None or ""
+        assert isinstance(explanation, Explanation)
+        assert explanation.mistake is not None
+        assert explanation.text is not None
+        assert explanation.best_move is not None
