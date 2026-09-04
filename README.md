@@ -96,7 +96,7 @@ class Mistake:
     fen_after: str
     eval_before: int     # centipawns
     eval_after: int
-    move_played: str     # SAN notation
+    move_played: str     # UCI notation
 
 @dataclass
 class Explanation:
@@ -105,7 +105,7 @@ class Explanation:
     best_move: str       # engine's top choice
 ```
 
-### New ports (planned)
+### New ports (Complete)
 
 ```python
 class CoachingPort(Protocol):
@@ -114,20 +114,20 @@ class CoachingPort(Protocol):
     ) -> list[Explanation]: ...
 ```
 
-### New use cases (planned)
+### New use cases (Complete)
 
 | Use Case | What it does |
 |----------|-------------|
 | `detect_mistakes` | Pure Python — walks evaluations, flags eval swings above threshold |
 | `explain_mistakes` | Orchestrates: detect → hand to `CoachingPort` → return explanations |
 
-### New adapter (planned)
+### New adapter (Complete)
 
 `ClaudeCoachAdapter` — the **only** file that imports the Anthropic SDK.
 Takes a `ChessEnginePort` as a constructor dependency so Claude can call
 `get_best_move` as a real tool during the agentic loop.
 
-### New endpoint (planned)
+### New endpoint (Complete)
 
 `GET /games/{id}/coaching` — thin route, same pattern as `/analysis`.
 
@@ -160,7 +160,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Required:
 #   STOCKFISH_PATH — absolute path to the stockfish binary
-#   ANTHROPIC_API_KEY — your Anthropic key (Phase 3, optional for now)
+#   CLAUDE_API_KEY — your Anthropic's Claude key (Phase 3, optional for now)
 ```
 
 ### 4. Verify Stockfish is reachable
