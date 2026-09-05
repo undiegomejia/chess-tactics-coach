@@ -1,40 +1,9 @@
 from app.adapters.persistence import GameORM
-from app.domain.entities import GameEntity
-from tests.conftest import game_entity_list, game_orm, game_entity
+from tests.conftest import game_entity_list, game_orm, game_entity, FakeSQLAlchemyGameRepository
 
 game_entity_list_mock = game_entity_list
 game_orm_mock = game_orm
 game_entity_mock = game_entity
-
-class FakeSQLAlchemyGameRepository:
-    def __init__(self, _):
-        return
-
-    def add_game(self, game_entity_list_mock: GameEntity) -> GameEntity:
-        return  game_entity_list_mock
-
-    def get_games(self) -> list[GameEntity]:
-        game_entity_1 = GameEntity(
-            id=1,
-            white="?",
-            black="Bruce, Rowena M",
-            result="1/2-1/2",
-            pgn='[Event "?"]\n[Site "?"]\n[Date "2023.10.01"]\n[Round "?"]\n[White "?"]\n[Black "Bruce, Rowena M"]\n[Result "1/2-1/2"]\n\n1. e4 e5 1/2-1/2',
-        )
-        game_entity_2 = GameEntity(
-            id=2,
-            white="Alice",
-            black="Bob",
-            result="1-0",
-            pgn='[Event "?"]\n[Site "?"]\n[Date "2023.10.02"]\n[Round "?"]\n[White "Alice"]\n[Black "Bob"]\n[Result "1-0"]\n\n1. d4 d5 2. c4 1-0',
-        )
-        return [game_entity_1, game_entity_2]
-
-    def get_game_by_id(self, game_id: int) -> GameEntity | None:
-        for game in self.get_games():
-            if game.id == game_id:
-                return game
-        return None
 
 
 def test_game_orm_to_entity_conversion(game_orm_mock, game_entity_mock):
