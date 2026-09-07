@@ -2,7 +2,7 @@ from anthropic import Anthropic
 from app.domain.ports import ChessEnginePort
 from app.config import settings
 from app.domain.entities import Explanation
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 class AlternativeMove(BaseModel):
     move_san: str

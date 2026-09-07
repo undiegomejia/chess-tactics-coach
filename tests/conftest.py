@@ -18,7 +18,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.database import Base, get_db
-from app.use_cases import game_use_cases
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
