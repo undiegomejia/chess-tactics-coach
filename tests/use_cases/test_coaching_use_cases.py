@@ -1,21 +1,9 @@
 from tests.conftest import generate_mistakes
 from app.use_cases.coaching_use_case import detect_mistakes
 from app.domain.entities import EvaluationEntity, Explanation
+from tests.conftest import FakeCoachingPort
 
 mistakes = generate_mistakes
-
-class FakeCoachingPort:
-    def explain(self, _, mistakes) -> list[Explanation]:
-        explanations:list[Explanation] = []
-        for mistake in mistakes:
-            explanation = Explanation(
-                mistake=mistake,
-                text=f"Explanation for mistake at move {mistake.move_number} by {mistake.player}.",
-                best_move="e2e4"  # Mock best move
-            )
-            explanations.append(explanation)
-        return explanations
-    
 
 def test_fake_coaching_port(mistakes):
     coaching_port = FakeCoachingPort()

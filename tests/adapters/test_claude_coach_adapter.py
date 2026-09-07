@@ -1,9 +1,12 @@
+
 from app.adapters.claude_coach_adapter import generate_prompt
-from tests.conftest import FakeClaudeCoachAdapter
+from app.adapters.claude_coach_adapter import ClaudeCoachAdapter
 from app.domain.entities import Explanation
-from tests.conftest import game_entity
+from tests.conftest import game_entity, FakeAnthropicClient, FakeChessEnginePort
 
 test_game_entity = game_entity
+anthropic_client = FakeAnthropicClient(api_key="TEST_your_api_key_here")
+fake_engine = FakeChessEnginePort()
 
 def test_generate_prompt(test_game_entity, generate_mistakes):
     """Test the _generate_prompt function."""
@@ -18,7 +21,7 @@ def test_generate_prompt(test_game_entity, generate_mistakes):
         assert "fen_after" in prompt
 
 def test_claude_coach_adapter(test_game_entity, generate_mistakes):
-    adapter = FakeClaudeCoachAdapter()
+    adapter = ClaudeCoachAdapter(api_key="fake", engine=fake_engine, client=anthropic_client)
     explanations = adapter.explain(test_game_entity, generate_mistakes)
 
     assert isinstance(explanations, list)
