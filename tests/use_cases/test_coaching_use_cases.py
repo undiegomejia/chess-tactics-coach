@@ -1,6 +1,6 @@
 from tests.conftest import generate_mistakes
 from app.use_cases.coaching_use_case import detect_mistakes
-from app.domain.entities import EvaluationEntity, Explanation
+from app.domain.entities import EvaluationEntity, Explanation, Mistake
 from tests.conftest import FakeCoachingPort
 
 mistakes = generate_mistakes
@@ -14,21 +14,24 @@ def test_fake_coaching_port(mistakes):
     for explanation in explanations:
         assert isinstance(explanation, Explanation)
         assert explanation.mistake is not None
-        assert explanation.mistake_category is not None
-        assert explanation.concise_explanation is not None
-        assert explanation.concrete_variation is not None
+        assert isinstance(explanation.mistake, Mistake)
+        assert explanation.mistake_category == "Positional Mistake"
+        assert explanation.concise_explanation == "White's move e4 allowed Black to gain control of the center with e5."
+        assert explanation.concrete_variation == "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"
         assert explanation.best_alternatives is not None
+        assert isinstance(explanation.best_alternatives, list)
         for alt in explanation.best_alternatives:
-            assert alt.move_san is not None
-            assert alt.move_uci is not None
-            assert alt.short_line is not None
-            assert alt.eval_after_line is not None
-            assert alt.rationale is not None
-        assert explanation.tactical_motifs is not None
-        assert explanation.strategic_factors is not None
-        assert explanation.recommended_plan is not None
-        assert explanation.confidence is not None
-        assert explanation.best_move is not None
+            assert alt.move_san == "d4"
+            assert alt.move_uci == "d2d4"
+            assert alt.short_line == "1. d4 d5 2. c4"
+            assert alt.eval_after_line == "30"
+            assert alt.rationale == "Opens up lines for the queen and bishop."
+        assert explanation.tactical_motifs == ["Pin", "Fork"]
+        assert explanation.strategic_factors == ["Control of the center", "Piece development"]
+        assert explanation.recommended_plan == "Develop pieces and control the center."
+        assert explanation.confidence == 0.95
+        assert isinstance(explanation.confidence, float)
+        assert explanation.best_move == "e2e4"
 
 def test_detect_mistakes():
     evaluations = [
