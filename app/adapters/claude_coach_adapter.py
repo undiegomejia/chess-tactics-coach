@@ -1,6 +1,25 @@
 from anthropic import Anthropic
-from app.domain.entities import Explanation
 from app.domain.ports import ChessEnginePort
+from app.config import settings
+from app.domain.entities import Explanation
+from pydantic import BaseModel, ConfigDict
+
+class AlternativeMove(BaseModel):
+    move_san: str
+    move_uci: str | None
+    short_line: str
+    eval_after_line: str  # numeric or "mate+N" per your own prompt's rules
+    rationale: str
+
+class ClaudeExplanationPayload(BaseModel):
+    mistake_category: str
+    concise_explanation: str
+    concrete_variation: str
+    best_alternatives: list[AlternativeMove]
+    tactical_motifs: list[str]
+    strategic_factors: list[str]
+    recommended_plan: str
+    confidence: float
 
 
 class ClaudeCoachAdapter:
@@ -30,11 +49,12 @@ class ClaudeCoachAdapter:
         for mistake in mistakes:
             prompt = generate_prompt(game, mistake)
             history = [{"role": "user", "content": prompt}]
-            response = self._client.messages.create(
-                model="claude-3-5-haiku-20241022",
+            response = self._client.messages.parse(
+                model=settings.claude_model,
                 messages=history,
                 max_tokens=1024,
                 tools=tools,
+                output_format=ClaudeExplanationPayload
             )
             if response.stop_reason == "tool_use":
                 tool_use = next(
@@ -56,53 +76,34 @@ class ClaudeCoachAdapter:
                         ],
                     },
                 ]
-                followup = self._client.messages.create(
-                    model="claude-3-5-haiku-20241022",
+                response = self._client.messages.parse(
+                    model=settings.claude_model,
                     max_tokens=1024,
                     tools=tools,
                     messages=history,
+                    output_format=ClaudeExplanationPayload
                 )
-                text = next(b.text for b in followup.content if b.type == "text")
             else:
-                text = next(b.text for b in response.content if b.type == "text")
                 best_move = None
+            payload = response.parsed_output
             explanations.append(
-                Explanation(mistake=mistake, text=text, best_move=best_move)
+                Explanation(
+                    mistake=mistake, 
+                    mistake_category=payload.mistake_category, 
+                    concise_explanation=payload.concise_explanation,
+                    concrete_variation=payload.concrete_variation,
+                    best_alternatives=payload.best_alternatives,
+                    tactical_motifs=payload.tactical_motifs,
+                    strategic_factors=payload.strategic_factors,
+                    recommended_plan=payload.recommended_plan,
+                    confidence=payload.confidence,
+                    best_move=best_move
+                )
             )
-            print(f"Explanations: {explanations}")
         return explanations
 
 
 def generate_prompt(game, mistake) -> str:
-    expected_json_example = {
-        "move_number": "23",
-        "player": "black",
-        "move_played": "Qh4",
-        "fen_before": "r1bq1rk1/ppp2ppp/2n2n2/3p4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 w - - 0 10",
-        "fen_after": "r1bq1rk1/ppp2ppp/2n2n2/3p4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 b - - 0 10",
-        "eval_before": "20",
-        "eval_after": "-150",
-        "eval_delta": "-170",
-        "eval_units": "centipawns",
-        "eval_type_before": "engine",
-        "eval_type_after": "engine",
-        "mistake_category": "blunder",
-        "concise_explanation": "The move Qh4 allows a tactical sequence that wins material by exploiting an undefended back rank and a pinned piece.",
-        "concrete_variation": "1. Qh4 2. Nxh4 g5 3. Nf3 ... eval +2.10",
-        "best_alternatives": [
-            {
-                "move_san": "Re1",
-                "move_uci": "e1e8",
-                "short_line": "Re1 Re8 2. ...",
-                "eval_after_line": "50",
-                "rationale": "Improves rook activity and avoids the tactical motif.",
-            }
-        ],
-        "tactical_motifs": ["pin", "back-rank"],
-        "strategic_factors": ["king safety", "piece coordination"],
-        "recommended_plan": "Prioritize king safety and avoid weakening pawn moves that create tactical targets. When in doubt, improve piece coordination before launching attacks.",
-        "confidence": "0.92",
-    }
 
     # ← fill in: move_number, player, fen_before, fen_after, eval_before, eval_after, move_played
     prompt = f"""
@@ -162,6 +163,7 @@ def generate_prompt(game, mistake) -> str:
         - **strategic_factors**: List up to 3 strategic factors (e.g., king safety, pawn structure, piece activity, weak squares).
         - **recommended_plan**: 2-4 short actionable sentences describing how the player should proceed to improve in similar positions.
         - **confidence**: A number between 0.0 and 1.0 representing how confident the model is in the analysis.
+        - **get_best_move**: Use the get_best_move tool to verify the engine's actual best move before making claims about what should have been played
 
         4. **Safety and hallucination rules**
         - If any required field is missing or cannot be determined from the provided data, set that field to **null** and do not invent values.
@@ -174,8 +176,51 @@ def generate_prompt(game, mistake) -> str:
 
         Example JSON structure expected
         
-        {expected_json_example}
+        {expected_json_example()}
 
         End of prompt.
         """
     return prompt
+
+def expected_json_example() -> str:
+    return """
+        [
+        {
+    "mistake": {
+      "move_number": 3,
+      "player": "black",
+      "fen_before": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+      "fen_after": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+      "eval_before": -25,
+      "eval_before_type": "cp",
+      "eval_after": 1,
+      "eval_after_type": "mate",
+      "move_played": "g8f6"
+    },
+    "full_explanation": {
+        "mistake_category": "blunder",
+        "concise_explanation": "Black's move g8f6 allows White to deliver a checkmate in one move with Qxf7#.",
+        "concrete_variation": "3... g8f6 4. Qxf7# (mate)",
+        "best_alternatives": [
+            {
+            "move_uci": "d7d6",
+            "short_line": "3... d7d6 4. Qxf7# (mate)",
+            "eval_after_line": -50,
+            "rationale": "Develops the bishop and prevents immediate mate."
+            },
+            {
+            "move_uci": "e5e4",
+            "short_line": "3... e5e4 4. Qxf7# (mate)",
+            "eval_after_line": -30,
+            "rationale": "Gains space and opens lines for development."
+            }
+        ],
+        "tactical_motifs": ["back-rank mate", "pin"],
+        "strategic_factors": ["king safety", "piece activity"],
+        "recommended_plan": "Focus on king safety, avoid weakening pawn moves, and prioritize piece development.",
+        "confidence": 0.95
+    },
+    "best_move": null
+  }
+  ]
+    """

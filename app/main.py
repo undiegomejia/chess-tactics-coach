@@ -9,7 +9,6 @@ import anthropic
 from app.adapters.chess_engine_adapter import StockfishEngineAdapter
 from app.adapters.claude_coach_adapter import ClaudeCoachAdapter
 from app.adapters.persistence import SQLAlchemyGameRepository
-from app.domain.entities import Explanation
 from fastapi import Depends, FastAPI, HTTPException
 from contextlib import asynccontextmanager
 from app.database import get_db
@@ -97,7 +96,16 @@ def get_coaching(game_id: int, db = Depends(get_db)) -> list[ExplanationModelRes
         mistakes = coaching_use_case.detect_mistakes(game_analysis)
         # Get explanations for the detected mistakes
         explanations = coaching_use_case.explain_mistakes(game_by_id, mistakes, coach_adapter)
-        return [ExplanationModelResponse(mistake=explanation.mistake, text=explanation.text, best_move=explanation.best_move) for explanation in explanations]
+        return [ExplanationModelResponse(mistake=explanation.mistake, 
+                                         mistake_category=explanation.mistake_category,
+                                         concise_explanation=explanation.concise_explanation,
+                                         concrete_variation=explanation.concrete_variation,
+                                         best_alternatives=explanation.best_alternatives,
+                                         tactical_motifs=explanation.tactical_motifs,
+                                         strategic_factors=explanation.strategic_factors,
+                                         recommended_plan=explanation.recommended_plan,
+                                         confidence=explanation.confidence,
+                                         best_move=explanation.best_move) for explanation in explanations]
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except anthropic.APIStatusError as e:
