@@ -14,5 +14,6 @@ class Settings(BaseSettings):
     stockfish_path: str = "/usr/local/bin/stockfish"
     database_url: str = "sqlite:///./data/chess.db"
     anthropic_api_key: SecretStr = Field(alias="CLAUDE_API_KEY")
+    claude_model: str = "claude-haiku-4-5-20251001"
 
 settings = Settings()

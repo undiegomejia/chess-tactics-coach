@@ -11,11 +11,23 @@ def test_fake_coaching_port(mistakes):
 
     assert isinstance(explanations, list)
     assert len(explanations) == len(mistakes)
-    print(f"Explanations: {explanations}")
     for explanation in explanations:
         assert isinstance(explanation, Explanation)
         assert explanation.mistake is not None
-        assert explanation.text is not None
+        assert explanation.mistake_category is not None
+        assert explanation.concise_explanation is not None
+        assert explanation.concrete_variation is not None
+        assert explanation.best_alternatives is not None
+        for alt in explanation.best_alternatives:
+            assert alt.move_san is not None
+            assert alt.move_uci is not None
+            assert alt.short_line is not None
+            assert alt.eval_after_line is not None
+            assert alt.rationale is not None
+        assert explanation.tactical_motifs is not None
+        assert explanation.strategic_factors is not None
+        assert explanation.recommended_plan is not None
+        assert explanation.confidence is not None
         assert explanation.best_move is not None
 
 def test_detect_mistakes():
