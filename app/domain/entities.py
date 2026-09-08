@@ -4,8 +4,8 @@ Domain entities representing core business objects.
 Pure Python dataclasses without framework dependencies.
 """
 
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import date, datetime
 
 @dataclass
 class EvaluationEntity:
@@ -60,3 +60,17 @@ class Explanation:
     recommended_plan: str
     confidence: float
     best_move: str | None
+
+
+@dataclass
+class Drill:
+    fen_before: str
+    correct_move: str
+    target_evaluation: int
+    # SM-2 state
+    repetition_count: int = 0
+    ease_factor: float = 2.5
+    interval: int = 1
+    next_review_date: date = field(default_factory=date.today)
+    last_reviewed_at: datetime | None = None
+    id: int | None = None
