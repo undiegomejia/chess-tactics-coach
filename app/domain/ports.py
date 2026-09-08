@@ -6,7 +6,7 @@ Defines contracts for adapters (repository and chess engine).
 
 from typing import Protocol
 
-from app.domain.entities import EvaluationEntity, Explanation, GameEntity, Mistake
+from app.domain.entities import Drill, EvaluationEntity, Explanation, GameEntity, Mistake
 
 
 class GameRepositoryPort(Protocol):
@@ -22,9 +22,17 @@ class ChessEnginePort(Protocol):
 
     def analyze(self, game: GameEntity) -> list[EvaluationEntity]: ...
     def get_best_move(self, fen: str) -> str: ...
+    def evaluate_fen(self, fen: str) -> EvaluationEntity: ...
 
 
 class CoachingPort(Protocol):
     def explain(
         self, game: GameEntity, mistakes: list[Mistake]
     ) -> list[Explanation]: ...
+
+class DrillRepositoryPort(Protocol):
+    """Port for drill persistence operations."""
+    def add_drill(self, drill: Drill) -> Drill: ...
+    def get_due_drills(self) -> list[Drill]: ...
+    def get_drill_by_id(self, drill_id: int) -> Drill | None: ...
+    def update_drill(self, drill: Drill) -> Drill: ...
