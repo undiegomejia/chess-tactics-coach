@@ -13,7 +13,7 @@ Claude acting as an agentic coach with access to real chess-engine tools.
 | Phase 1 | MVP — Routes, DB, Stockfish | ✅ Complete |
 | Phase 2 | Hexagonal Architecture (Ports & Adapters) | ✅ Complete |
 | Phase 3 | Coach Logic — Mistake Detection + Claude Agent | ✅ Complete |
-| Phase 4 | Frontend UI (React) | 🔄 In Progress |
+| Phase 4 | Drill Implementation | 🔄 In Progress |
 
 ---
 
