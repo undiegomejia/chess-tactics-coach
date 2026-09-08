@@ -64,9 +64,10 @@ class Explanation:
 
 @dataclass
 class Drill:
+    mistake: Mistake
     fen_before: str
-    correct_move: str
-    target_evaluation: int
+    correct_move: str # UCI format
+    target_evaluation: int #always store the pre-normalized centipawn-equivalent
     # SM-2 state
     repetition_count: int = 0
     ease_factor: float = 2.5
