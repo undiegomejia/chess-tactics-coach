@@ -81,7 +81,7 @@ def test_apply_sm2():
     assert ease_factor == 1.3
     assert interval == 1
 
-    # Add this four-review chain as a test, asserting the final (4, 2.6, 39)
+    # Add this four-review chain as a test, asserting the final (4, 2.5, 39)
     repetition_count, ease_factor, interval = apply_sm2(quality=4, repetition_count=0, ease_factor=2.5, interval=1)
     repetition_count, ease_factor, interval = apply_sm2(quality=4, repetition_count=repetition_count, ease_factor=ease_factor, interval=interval)
     repetition_count, ease_factor, interval = apply_sm2(quality=4, repetition_count=repetition_count, ease_factor=ease_factor, interval=interval)

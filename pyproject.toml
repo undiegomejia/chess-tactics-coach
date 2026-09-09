@@ -46,3 +46,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "anthropic.*"
 ignore_missing_imports = true
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]

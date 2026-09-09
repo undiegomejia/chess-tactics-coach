@@ -1,10 +1,11 @@
+from typing import Any
 from anthropic import Anthropic
 from app.domain.ports import ChessEnginePort
 from app.config import settings
 from app.domain.entities import Explanation
 from pydantic import BaseModel
 
-class AlternativeMove(BaseModel):
+class AlternativeMovePayload(BaseModel):
     move_san: str
     move_uci: str | None
     short_line: str
@@ -15,7 +16,7 @@ class ClaudeExplanationPayload(BaseModel):
     mistake_category: str
     concise_explanation: str
     concrete_variation: str
-    best_alternatives: list[AlternativeMove]
+    best_alternatives: list[AlternativeMovePayload]
     tactical_motifs: list[str]
     strategic_factors: list[str]
     recommended_plan: str
@@ -48,58 +49,59 @@ class ClaudeCoachAdapter:
         ]
         for mistake in mistakes:
             prompt = generate_prompt(game, mistake)
-            history = [{"role": "user", "content": prompt}]
-            response = self._client.messages.parse(
-                model=settings.claude_model,
-                messages=history,
-                max_tokens=1024,
-                tools=tools,
-                output_format=ClaudeExplanationPayload
-            )
-            if response.stop_reason == "tool_use":
-                tool_use = next(
-                    block for block in response.content if block.type == "tool_use"
-                )
-                fen = tool_use.input["fen"]
-                best_move = self._engine.get_best_move(fen)
-
-                history = history + [
-                    {"role": "assistant", "content": response.content},
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": tool_use.id,
-                                "content": best_move,
-                            }
-                        ],
-                    },
-                ]
+            history: list[dict[str, str]] | list[dict[str, Any]] = [{"role": "user", "content": prompt}]
+            if self._client is not None:
                 response = self._client.messages.parse(
                     model=settings.claude_model,
+                    messages=history,
                     max_tokens=1024,
                     tools=tools,
-                    messages=history,
                     output_format=ClaudeExplanationPayload
                 )
-            else:
-                best_move = None
-            payload = response.parsed_output
-            explanations.append(
-                Explanation(
-                    mistake=mistake, 
-                    mistake_category=payload.mistake_category, 
-                    concise_explanation=payload.concise_explanation,
-                    concrete_variation=payload.concrete_variation,
-                    best_alternatives=payload.best_alternatives,
-                    tactical_motifs=payload.tactical_motifs,
-                    strategic_factors=payload.strategic_factors,
-                    recommended_plan=payload.recommended_plan,
-                    confidence=payload.confidence,
-                    best_move=best_move
+                if response.stop_reason == "tool_use":
+                    tool_use = next(
+                        block for block in response.content if block.type == "tool_use"
+                    )
+                    fen = tool_use.input["fen"]
+                    best_move = self._engine.get_best_move(fen)
+
+                    history = history + [
+                        {"role": "assistant", "content": response.content},
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use.id,
+                                    "content": best_move,
+                                }
+                            ],
+                        },
+                    ]
+                    response = self._client.messages.parse(
+                        model=settings.claude_model,
+                        max_tokens=1024,
+                        tools=tools,
+                        messages=history,
+                        output_format=ClaudeExplanationPayload
+                    )
+                else:
+                    best_move = None
+                payload = response.parsed_output
+                explanations.append(
+                    Explanation(
+                        mistake=mistake, 
+                        mistake_category=payload.mistake_category, 
+                        concise_explanation=payload.concise_explanation,
+                        concrete_variation=payload.concrete_variation,
+                        best_alternatives=payload.best_alternatives,
+                        tactical_motifs=payload.tactical_motifs,
+                        strategic_factors=payload.strategic_factors,
+                        recommended_plan=payload.recommended_plan,
+                        confidence=payload.confidence,
+                        best_move=best_move
+                    )
                 )
-            )
         return explanations
 
 
