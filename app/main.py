@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from app.database import get_db
 from app.use_cases import coaching_use_case, game_use_cases
 from app.database import engine, Base
-from app.schemas import EvaluationModelResponse, ExplanationModelResponse, GameCreated, GetGame, PostGame
+from app.schemas import AlternativeMoveResponse, EvaluationModelResponse, ExplanationModelResponse, GameCreated, GetGame, MistakeModelResponse, PostGame
 from app.config import settings
 
 stockfish_adapter = StockfishEngineAdapter(settings.stockfish_path)
@@ -91,16 +91,28 @@ def get_coaching(game_id: int, db = Depends(get_db)) -> list[ExplanationModelRes
         # Fetch the game and analyze it
         game_by_id = game_use_cases.fetch_game(game_id, repo)
         # Analyze the game to get evaluations
+        if game_by_id is None:
+            raise HTTPException(status_code=404, detail=f"Game with id {game_id} not found")
         game_analysis = game_use_cases.analyze_game(game_id, repo, stockfish_engine)
         # Detect mistakes based on the evaluations
         mistakes = coaching_use_case.detect_mistakes(game_analysis)
         # Get explanations for the detected mistakes
         explanations = coaching_use_case.explain_mistakes(game_by_id, mistakes, coach_adapter)
-        return [ExplanationModelResponse(mistake=explanation.mistake, 
+        return [ExplanationModelResponse(mistake=MistakeModelResponse(
+                                            move_number=explanation.mistake.move_number,
+                                            player=explanation.mistake.player,
+                                            fen_before=explanation.mistake.fen_before,
+                                            fen_after=explanation.mistake.fen_after,
+                                            eval_before=explanation.mistake.eval_before,
+                                            eval_before_type=explanation.mistake.eval_before_type,
+                                            eval_after=explanation.mistake.eval_after,
+                                            eval_after_type=explanation.mistake.eval_after_type,
+                                            move_played=explanation.mistake.move_played
+                                         ), 
                                          mistake_category=explanation.mistake_category,
                                          concise_explanation=explanation.concise_explanation,
                                          concrete_variation=explanation.concrete_variation,
-                                         best_alternatives=explanation.best_alternatives,
+                                         best_alternatives=map_alternative_list(explanation.best_alternatives),
                                          tactical_motifs=explanation.tactical_motifs,
                                          strategic_factors=explanation.strategic_factors,
                                          recommended_plan=explanation.recommended_plan,
@@ -110,6 +122,10 @@ def get_coaching(game_id: int, db = Depends(get_db)) -> list[ExplanationModelRes
         raise HTTPException(status_code=404, detail=str(e))
     except anthropic.APIStatusError as e:
         raise HTTPException(status_code=502, detail=f"Coaching service error: {e.message}")
+    
+def map_alternative_list(alternatives: list) -> list[AlternativeMoveResponse]:
+    """Map a list of alternative moves to the AlternativeMoveResponse schema."""
+    return [AlternativeMoveResponse(move_san=alt.move_san, move_uci=alt.move_uci, short_line=alt.short_line, eval_after_line=alt.eval_after_line, rationale=alt.rationale) for alt in alternatives]
 
 @app.get("/health")
 def health_check() -> dict:

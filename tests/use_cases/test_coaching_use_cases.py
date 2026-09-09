@@ -24,7 +24,7 @@ def test_fake_coaching_port(mistakes):
             assert alt.move_san == "d4"
             assert alt.move_uci == "d2d4"
             assert alt.short_line == "1. d4 d5 2. c4"
-            assert alt.eval_after_line == "30"
+            assert alt.eval_after_line == 30
             assert alt.rationale == "Opens up lines for the queen and bishop."
         assert explanation.tactical_motifs == ["Pin", "Fork"]
         assert explanation.strategic_factors == ["Control of the center", "Piece development"]

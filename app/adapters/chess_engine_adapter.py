@@ -46,19 +46,10 @@ class StockfishEngineAdapter:
         for i, move in enumerate(chess_game.mainline_moves()):
             board.push(move)
             send_new_game = i == 0
-            with self._lock:
-                self._engine.set_fen_position(board.fen(), send_ucinewgame_token=send_new_game)
-                evaluation = self._engine.get_evaluation()
-            
+            evaluation_entity = self.evaluate_fen(board.fen(), send_ucinewgame_token=send_new_game)
+            evaluation_entity.move_played = move.uci()  # Set the move played in the evaluation entity
             # Create entity directly
-            evaluations.append(
-                EvaluationEntity(
-                    fen=board.fen(),
-                    type=evaluation["type"],
-                    value=evaluation["value"],
-                    move_played=move.uci(),  # Store the move played in UCI format
-                )
-            )
+            evaluations.append(evaluation_entity)
         return evaluations
     
     def get_best_move(self, fen: str) -> str:
@@ -68,3 +59,16 @@ class StockfishEngineAdapter:
             self._engine.set_fen_position(fen)
             best_move = self._engine.get_best_move()
         return best_move
+
+    def evaluate_fen(self, fen: str, send_ucinewgame_token: bool = True) -> EvaluationEntity:
+        if self._engine is None:
+            raise RuntimeError("Stockfish engine is not started")
+        with self._lock:
+            self._engine.set_fen_position(fen, send_ucinewgame_token=send_ucinewgame_token)
+            evaluation = self._engine.get_evaluation()
+        return EvaluationEntity(
+            fen=fen,
+            type=evaluation["type"],
+            value=evaluation["value"],
+            move_played="",  # No move played in this case
+        )

@@ -8,9 +8,9 @@ Automatically discovered by pytest before running tests.
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from app.adapters.claude_coach_adapter import AlternativeMove, ClaudeExplanationPayload
+from app.adapters.claude_coach_adapter import AlternativeMovePayload, ClaudeExplanationPayload
 from app.adapters.persistence import GameORM
-from app.domain.entities import EvaluationEntity, Explanation, GameEntity, Mistake
+from app.domain.entities import AlternativeMoveEntity, EvaluationEntity, Explanation, GameEntity, Mistake
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -112,7 +112,7 @@ def mock_full_explanation() -> ClaudeExplanationPayload:
         concise_explanation="White's move e4 allowed Black to gain control of the center with e5.",
         concrete_variation="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6",
         best_alternatives=[
-            AlternativeMove(
+            AlternativeMovePayload(
                 move_san="d4",
                 move_uci="d2d4",
                 short_line="1. d4 d5 2. c4",
@@ -194,11 +194,11 @@ class FakeCoachingPort:
                 concise_explanation="White's move e4 allowed Black to gain control of the center with e5.",
                 concrete_variation="1. e4 e5 2. Nf3 Nc6 3. Bb5 a6",
                 best_alternatives=[
-                    AlternativeMove(
+                    AlternativeMoveEntity(
                         move_san="d4",
                         move_uci="d2d4",
                         short_line="1. d4 d5 2. c4",
-                        eval_after_line="30",
+                        eval_after_line=30,
                         rationale="Opens up lines for the queen and bishop.",
                     )
                 ],
@@ -228,9 +228,9 @@ class FakeAnthropicContentBlock:
     def __init__(
         self,
         block_type: str,
-        full_explanation: ClaudeExplanationPayload = None,
-        tool_use_id: str = None,
-        input_data: dict = None,
+        full_explanation: ClaudeExplanationPayload | None = None,
+        tool_use_id: str | None = None,
+        input_data: dict | None = None,
     ):
         self.type = block_type
         self.full_explanation = full_explanation

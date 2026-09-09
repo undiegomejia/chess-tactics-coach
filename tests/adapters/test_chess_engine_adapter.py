@@ -52,3 +52,27 @@ def test_stop_stockfish_engine():
     adapter.start()
     adapter.stop()
     assert adapter._engine is None
+
+def test_get_best_move():
+    """Test that the Stockfish engine returns a best move for a given FEN."""
+    adapter = StockfishEngineAdapter(path=stockfish_path)
+    adapter.start()
+    fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    best_move = adapter.get_best_move(fen)
+    
+    assert isinstance(best_move, str)
+    assert len(best_move) == 4  # UCI move format is always 4 characters
+    adapter.stop()
+
+def test_evaluate_fen():
+    """Test that the Stockfish engine evaluates a given FEN correctly."""
+    adapter = StockfishEngineAdapter(path=stockfish_path)
+    adapter.start()
+    fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    evaluation = adapter.evaluate_fen(fen, send_ucinewgame_token=True)
+    
+    assert isinstance(evaluation.fen, str)
+    assert evaluation.fen == fen
+    assert evaluation.type in ("cp", "mate")
+    assert isinstance(evaluation.value, int)
+    adapter.stop()
