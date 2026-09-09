@@ -24,26 +24,6 @@ def test_eval_distance_to_quality():
     ev7 = eval_distance_to_quality(student_eval_cp=70, target_eval_cp=0, side_to_move="black")
     assert ev7 == 3
 
-    '''
-    def apply_sm2(quality: int, repetition_count: int, ease_factor: float, interval: int) -> tuple[int, float, int]:
-    # returns the NEW (repetition_count, ease_factor, interval)
-    if quality < 3:
-        repetition_count = 0
-        interval = 1
-    else:
-        if repetition_count == 0:
-            interval = 1
-        elif repetition_count == 1:
-            interval = 6
-        else:
-            interval = round(interval * ease_factor)
-        repetition_count += 1
-    # Apply the SM-2 algorithm to update the repetition count, ease factor, and interval based on the quality of the response.
-    ease_factor = max(1.3, ease_factor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-    return repetition_count, ease_factor, interval
-
-    '''
-
 def test_apply_sm2():
     # Test case 1: quality < 3
     repetition_count, ease_factor, interval = apply_sm2(quality=2, repetition_count=0, ease_factor=2.5, interval=5)
