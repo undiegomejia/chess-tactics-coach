@@ -4,13 +4,12 @@ pytest fixtures and configuration.
 Provides test client with in-memory database and mock Stockfish engine.
 Automatically discovered by pytest before running tests.
 """
-
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 from app.adapters.claude_coach_adapter import AlternativeMovePayload, ClaudeExplanationPayload
 from app.adapters.persistence import GameORM
-from app.domain.entities import AlternativeMoveEntity, EvaluationEntity, Explanation, GameEntity, Mistake
+from app.domain.entities import AlternativeMoveEntity, Drill, EvaluationEntity, Explanation, GameEntity, Mistake
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -75,7 +74,6 @@ def game_entity():
         result="1/2-1/2",
         pgn='[Event "?"]\n[Site "?"]\n[Date "2023.10.01"]\n[Round "?"]\n[White "?"]\n[Black "Bruce, Rowena M"]\n[Result "1/2-1/2"]\n\n1. e4 e5 1/2-1/2',
     )
-
 
 @pytest.fixture
 def generate_mistakes():

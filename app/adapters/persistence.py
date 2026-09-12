@@ -27,7 +27,7 @@ class DrillORM(Base):
     ease_factor: Mapped[float] = mapped_column(Float, nullable=False, default=2.5, server_default="2.5")
     interval: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     next_review_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
-    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None, server_default=None)
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     # Mistake details
     mistake_move_number: Mapped[int] = mapped_column(Integer, nullable=False)
     mistake_player: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -53,6 +53,7 @@ class DrillORM(Base):
             move_played=self.mistake_move_played
         )
         return Drill(
+            id=self.id,
             mistake=mistake,
             fen_before=self.fen_before,
             correct_move=self.correct_move,
@@ -67,6 +68,7 @@ class DrillORM(Base):
     @classmethod
     def from_entity(cls, drill: Drill) -> "DrillORM":
         return cls(
+            id=drill.id,
             fen_before=drill.fen_before,
             correct_move=drill.correct_move,
             target_evaluation=drill.target_evaluation,
@@ -144,3 +146,30 @@ class SQLAlchemyGameRepository:
         if not game:
             return None
         return game.to_entity()
+    
+class SQLAlchemyDrillRepository:
+    def __init__(self, session):
+        self.session = session
+
+    def add_drill(self, drill: Drill) -> Drill:
+        drill_orm = DrillORM.from_entity(drill)
+        self.session.add(drill_orm)
+        self.session.commit()
+        self.session.refresh(drill_orm)
+        return drill_orm.to_entity()
+
+    def get_drill_by_id(self, drill_id: int) -> Drill | None:
+        drill = self.session.query(DrillORM).filter(DrillORM.id == drill_id).first()
+        if not drill:
+            return None
+        return drill.to_entity()
+
+    def get_due_drills(self, as_of: date) -> list[Drill]:
+        drills = self.session.query(DrillORM).filter(DrillORM.next_review_date <= as_of).all()
+        return [drill.to_entity() for drill in drills]
+
+    def update_drill(self, drill: Drill) -> Drill:
+        merged = self.session.merge(DrillORM.from_entity(drill))
+        self.session.commit()
+        self.session.refresh(merged)
+        return merged.to_entity()
