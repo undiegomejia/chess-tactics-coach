@@ -9,8 +9,7 @@ from tests.conftest import (
 )
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import StaticPool, create_engine
-from app.main import app
-from app.database import Base, Base, get_db
+from app.database import Base, Base
 
 game_entity_list_mock = game_entity_list
 game_orm_mock = game_orm

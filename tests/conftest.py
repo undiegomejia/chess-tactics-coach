@@ -4,6 +4,7 @@ pytest fixtures and configuration.
 Provides test client with in-memory database and mock Stockfish engine.
 Automatically discovered by pytest before running tests.
 """
+from datetime import date
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -374,3 +375,38 @@ class FakeSQLAlchemyGameRepository:
             if game.id == game_id:
                 return game
         return None
+    
+class FakeGradingEngine:
+    """Fake engine that returns a preset eval per FEN, for grading tests."""
+    def __init__(self, evals_by_fen: dict[str, EvaluationEntity], best_move: str):
+        self._evals = evals_by_fen
+        self._best_move = best_move
+    def get_best_move(self, fen: str) -> str:
+        return self._best_move
+    def evaluate_fen(self, fen: str) -> EvaluationEntity:
+        return self._evals[fen]   # look up by the resulting position
+    
+class FakeDrillRepositoryPort:
+    """Fake DrillRepositoryPort for testing."""
+    def __init__(self):
+        self.drills = {}
+        self.next_id = 1
+
+    def add_drill(self, drill: Drill) -> Drill:
+        drill.id = self.next_id
+        self.drills[self.next_id] = drill
+        self.next_id += 1
+        return drill
+    
+    def get_due_drills(self, as_of: date) -> list[Drill]:
+        return [drill for drill in self.drills.values() if drill.next_review_date <= as_of]
+
+    def get_drill_by_id(self, drill_id: int) -> Drill | None:
+        return self.drills.get(drill_id)
+
+    def update_drill(self, drill: Drill) -> Drill:
+        if drill.id in self.drills:
+            self.drills[drill.id] = drill
+            return drill
+        else:
+            raise ValueError(f"Drill with id {drill.id} does not exist.")

@@ -9,7 +9,7 @@ def detect_mistakes(evaluations: list[EvaluationEntity], threshold=100) -> list[
         eval_after = evaluations[i]
         # normalize evaluation values to centipawns for comparison
         # Assuming a mistake is defined as a drop in evaluation of more than `threshold` centipawns
-        absolute_difference = abs(_to_centipawns(eval_after) - _to_centipawns(eval_before))
+        absolute_difference = abs(eval_after.to_centipawns() - eval_before.to_centipawns())
         if absolute_difference > threshold:
             mistakes.append(
                 Mistake(
@@ -28,8 +28,3 @@ def detect_mistakes(evaluations: list[EvaluationEntity], threshold=100) -> list[
 
 def explain_mistakes(game: GameEntity, mistakes: list[Mistake], coach: CoachingPort) -> list[Explanation]:
     return coach.explain(game, mistakes)
-
-def _to_centipawns(evaluation: EvaluationEntity) -> int:
-    if evaluation.type == "mate":
-        return 10000 if evaluation.value > 0 else -10000
-    return evaluation.value
