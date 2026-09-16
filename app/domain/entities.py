@@ -15,6 +15,11 @@ class EvaluationEntity:
     value: int
     move_played: str = ""
 
+    def to_centipawns(self) -> int:
+        if self.type == "mate":
+            return 10000 if self.value > 0 else -10000
+        return self.value
+
 @dataclass
 class GameEntity:
     """Chess game domain entity."""

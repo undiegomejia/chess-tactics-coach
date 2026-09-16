@@ -112,3 +112,46 @@ def test_game_evaluation_invalid_pgn(client):
     assert "detail" in create_resp.json()
     assert "unable to parse" in create_resp.json()["detail"].lower()
 
+# test drill endpoints
+def test_create_and_grade_drill(client):
+    mistake_request = {"move_number": 1, "player": "white", "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1", "fen_after": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1", "eval_before": 0, "eval_before_type": "mate", "eval_after": 0, "eval_after_type": "mate", "move_played": "e4"}
+    created_drill_response = client.post("/drills", json=mistake_request)
+    assert created_drill_response.status_code == 201
+    drill_id = created_drill_response.json()["id"]
+    assert created_drill_response.json()["correct_move"] == "e2e4"
+
+    # Attempt
+    attempt_request = {"move": "b1a3"}
+    attempt_response = client.post(f"/drills/{drill_id}/attempt", json=attempt_request)
+    assert attempt_response.status_code == 200
+    data = attempt_response.json()
+    assert data["id"] == drill_id
+    assert data["last_reviewed_at"] is not None
+    assert isinstance(data["ease_factor"], float)   
+
+    # Test unexisting id
+    unexisting_attempt_response = client.post(f"/drills/{drill_id + 1}/attempt", json=attempt_request)
+    assert unexisting_attempt_response.status_code == 404
+
+def test_get_due_drills(client):
+    """Test retrieving due drills."""
+    # Create a drill first
+    mistake_request = {"move_number": 1, "player": "white", "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1", "fen_after": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1", "eval_before": 0, "eval_before_type": "mate", "eval_after": 0, "eval_after_type": "mate", "move_played": "e4"}
+    client.post("/drills", json=mistake_request)
+
+    response = client.get("/drills/due")
+    assert response.status_code == 200
+    due_drills = response.json()
+    assert isinstance(due_drills, list)
+    assert len(due_drills) > 0
+    # assert has next_review_date
+    assert "next_review_date" in due_drills[0]
+
+    # test invalid as_of date format
+    invalid_date_response = client.get("/drills/due?as_of=2024-13-01")
+    assert invalid_date_response.status_code == 422
+
+    # test valid as_of date format
+    valid_date_response = client.get("/drills/due?as_of=2024-01-01")
+    assert valid_date_response.status_code == 200
+    assert valid_date_response.json() == []
