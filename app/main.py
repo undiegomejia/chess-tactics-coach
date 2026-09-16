@@ -5,16 +5,18 @@ Provides REST API for chess game storage and analysis.
 Routes handle game CRUD operations and Stockfish-powered position analysis.
 """
 
+from datetime import date
 import anthropic
 from app.adapters.chess_engine_adapter import StockfishEngineAdapter
 from app.adapters.claude_coach_adapter import ClaudeCoachAdapter
-from app.adapters.persistence import SQLAlchemyGameRepository
+from app.adapters.persistence import SQLAlchemyDrillRepository, SQLAlchemyGameRepository
+from app.domain.entities import Mistake
 from fastapi import Depends, FastAPI, HTTPException
 from contextlib import asynccontextmanager
 from app.database import get_db
-from app.use_cases import coaching_use_case, game_use_cases
+from app.use_cases import coaching_use_case, drill_use_cases, game_use_cases
 from app.database import engine, Base
-from app.schemas import AlternativeMoveResponse, EvaluationModelResponse, ExplanationModelResponse, GameCreated, GetGame, MistakeModelResponse, PostGame
+from app.schemas import AlternativeMoveResponse, CreatedDrill, DrillModelRequest, DrillModelRequest, EvaluationModelResponse, ExplanationModelResponse, GameCreated, GetGame, MistakeModelRequest, MistakeModelResponse, PostGame, SubmittedMove
 from app.config import settings
 
 stockfish_adapter = StockfishEngineAdapter(settings.stockfish_path)
@@ -34,6 +36,11 @@ async def lifespan(app: FastAPI):
     stockfish_adapter.stop()
 
 app = FastAPI(lifespan=lifespan,title="Chess Tactics Coach", version="0.1.0")
+
+@app.get("/health")
+def health_check() -> dict:
+    """Health check endpoint for load balancers and orchestrators."""
+    return {"status": "ok"}
 
 @app.post("/games", status_code=201)
 def post_game(payload: PostGame, db = Depends(get_db))  -> GameCreated:
@@ -123,11 +130,54 @@ def get_coaching(game_id: int, db = Depends(get_db)) -> list[ExplanationModelRes
     except anthropic.APIStatusError as e:
         raise HTTPException(status_code=502, detail=f"Coaching service error: {e.message}")
     
+@app.post("/drills", status_code=201)
+def post_drill(mistake_request: MistakeModelRequest, db = Depends(get_db)) -> CreatedDrill:
+    repo = SQLAlchemyDrillRepository(db)
+    engine = app.state.chess_engine
+    try:
+        new_drill = drill_use_cases.create_drill(map_mistake_request_to_entity(mistake_request), engine, repo)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return CreatedDrill.model_validate(new_drill)
+
+@app.get("/drills/due", status_code=200)
+def get_due_drills(db = Depends(get_db), as_of: date | None = None) -> list[CreatedDrill]:
+    repo = SQLAlchemyDrillRepository(db)
+    if as_of is not None:
+        as_of_date = as_of
+    else:
+        as_of_date = date.today()
+    due_drills = drill_use_cases.get_due_drills(as_of_date, repo)
+    return [CreatedDrill.model_validate(drill) for drill in due_drills]
+
+@app.post("/drills/{drill_id}/attempt", status_code=200)
+def submit_attempt(drill_id: int, submitted_move: SubmittedMove, db = Depends(get_db)) -> CreatedDrill:
+    repo = SQLAlchemyDrillRepository(db)
+    engine = app.state.chess_engine
+    try:
+       graded = drill_use_cases.grade_attempt(drill_id, submitted_move.move, engine, repo)
+    except ValueError as e:
+       raise HTTPException(400, detail=str(e))
+    if graded is None:
+       raise HTTPException(404, detail=f"Drill {drill_id} not found")
+    return CreatedDrill.model_validate(graded)
+
+# Helpers
+def map_mistake_request_to_entity(mistake_req: MistakeModelRequest) -> Mistake:
+    """Convert MistakeModelRequest to Mistake entity."""
+    return Mistake(
+        move_number=mistake_req.move_number,
+        player=mistake_req.player,
+        fen_before=mistake_req.fen_before,
+        fen_after=mistake_req.fen_after,
+        eval_before=mistake_req.eval_before,
+        eval_before_type=mistake_req.eval_before_type,
+        eval_after=mistake_req.eval_after,
+        eval_after_type=mistake_req.eval_after_type,
+        move_played=mistake_req.move_played
+    )
+
 def map_alternative_list(alternatives: list) -> list[AlternativeMoveResponse]:
     """Map a list of alternative moves to the AlternativeMoveResponse schema."""
     return [AlternativeMoveResponse(move_san=alt.move_san, move_uci=alt.move_uci, short_line=alt.short_line, eval_after_line=alt.eval_after_line, rationale=alt.rationale) for alt in alternatives]
 
-@app.get("/health")
-def health_check() -> dict:
-    """Health check endpoint for load balancers and orchestrators."""
-    return {"status": "ok"}

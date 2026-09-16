@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
@@ -7,6 +7,11 @@ class PostGame(BaseModel):
     """Request model for creating a new game."""
     model_config = ConfigDict(from_attributes=True)
     pgn: str
+
+class SubmittedMove(BaseModel):
+    """Request model for submitting a move."""
+    model_config = ConfigDict(from_attributes=True)
+    move: str
 
 class GetGame(BaseModel):
     """Response model for game summary (without full PGN)."""
@@ -46,6 +51,19 @@ class MistakeModelResponse(BaseModel):
     eval_after_type: str
     move_played: str
 
+class MistakeModelRequest(BaseModel):
+    """Request model for detected mistakes."""
+    model_config = ConfigDict(from_attributes=True)
+    move_number: int
+    player: str
+    fen_before: str
+    fen_after: str
+    eval_before: int
+    eval_before_type: str
+    eval_after: int
+    eval_after_type: str
+    move_played: str
+
 class AlternativeMoveResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     move_san: str
@@ -66,3 +84,21 @@ class ExplanationModelResponse(BaseModel):
     recommended_plan: str
     confidence: float
     best_move: str | None
+
+class DrillModelRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    mistake: MistakeModelResponse   # the ONLY thing the client sends
+
+class CreatedDrill(BaseModel):
+    """Response model for a created drill."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    mistake: MistakeModelResponse
+    fen_before: str
+    correct_move: str
+    target_evaluation: int
+    repetition_count: int
+    ease_factor: float
+    interval: int
+    next_review_date: date
+    last_reviewed_at: datetime | None

@@ -60,6 +60,8 @@ def apply_sm2(quality: int, repetition_count: int, ease_factor: float, interval:
 
 def create_drill(mistake: Mistake, engine: ChessEnginePort, repo: DrillRepositoryPort) -> Drill:
     correct_move = engine.get_best_move(mistake.fen_before)
+    if correct_move is None:
+        raise ValueError(f"Engine could not find a best move for FEN: {mistake.fen_before}")
     board = chess.Board(mistake.fen_before)
     try: 
         board.push_uci(correct_move)  # play the correct move

@@ -168,7 +168,6 @@ def client(mock_engine_adapter):
 
 
 @pytest.fixture
-#
 def game_repo():
     return FakeGameRepository()
 
@@ -180,8 +179,6 @@ def sample_pgn_string():
 
 
 # Classes
-
-
 # Mocking the coaching port
 class FakeCoachingPort:
     def explain(self, _, mistakes) -> list[Explanation]:
@@ -300,6 +297,16 @@ class FakeAnthropicClient:
 
 
 class FakeStockfishAdapter:
+    def evaluate_fen(self, fen: str) -> EvaluationEntity:
+        """Return a mock evaluation for the given FEN."""
+        return EvaluationEntity(
+            fen=fen,
+            type="cp",
+            value=20,  # Mock value
+        )
+    def get_best_move(self, fen: str) -> str:
+        """Return a mock best move for the given FEN."""
+        return "e2e4"  # Mock
     def analyze(self, _) -> list[EvaluationEntity]:
         """Return a fixed evaluation sequence for testing."""
         return [
