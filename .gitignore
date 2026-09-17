@@ -9,4 +9,4 @@ data/*.db
 .DS_Store
 .vscode/
 .mypy_cache/
-node_modules/
+*node_modules/
