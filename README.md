@@ -15,7 +15,7 @@ Claude acting as an agentic coach with access to real chess-engine tools.
 | Phase 3 | Coach Logic — Mistake Detection + Claude Agent | ✅ Complete |
 | Phase 4 | Drill Implementation | ✅ Complete |
 | Phase 5 | React Frontend Implementation | 🟡 Work in progress |
-| Phase 6 | Containerization and Deploy | 🔴 Pending |
+| Phase 6 | Containerization and Deployment | 🔴 Pending |
 | Phase 7 | CI Workflows Implementation | 🔴 Pending |
 
 ---
