@@ -14,7 +14,7 @@ Claude acting as an agentic coach with access to real chess-engine tools.
 | Phase 2 | Hexagonal Architecture (Ports & Adapters) | ✅ Complete |
 | Phase 3 | Coach Logic — Mistake Detection + Claude Agent | ✅ Complete |
 | Phase 4 | Drill Implementation | ✅ Complete |
-| Phase 5 | Frontend Implementation | 🟡 Work in progress |
+| Phase 5 | React Frontend Implementation | 🟡 Work in progress |
 
 ---
 
